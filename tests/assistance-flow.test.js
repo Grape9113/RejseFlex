@@ -67,3 +67,10 @@ test('Handicapservice kan ikke bekræftes før togforslaget er kontrolleret', as
   const timed = await recordBookingTime(plan, 'inbound', '2026-10-02T13:00:00Z', { trainSource: source });
   assert.throws(() => confirmAssistance(confirmBooking(timed, 'inbound')), /Kontrollér togforslaget/);
 });
+
+
+test('første handicapkørsel kan ikke registreres før afhængighederne er afsluttet', async () => {
+  const plan = await proposeJourney(wish, { trainSource: source });
+  await assert.rejects(recordBookingTime(plan, 'outbound', '2026-10-02T09:00:00Z'), /tidligere trin/);
+  assert.throws(() => confirmAssistance(plan), /Kontrollér togforslaget/);
+});

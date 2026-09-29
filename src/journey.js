@@ -72,6 +72,7 @@ export async function recordBookingTime(plan, taskId, time, { trainSource = crea
   if (!Number.isFinite(Date.parse(time))) throw new Error('Angiv en gyldig afhentningstid.');
   const task = plan.tasks.find((item) => item.id === taskId);
   if (task?.status === 'bestilt') throw new Error('En bekræftet aftale kan ikke ændres automatisk.');
+  if (taskId === 'outbound' && !['klar til booking', 'afventer brugerinput'].includes(task?.status)) throw new Error('Afslut tidligere trin før første handicapkørsel registreres.');
   const updated = structuredClone(plan);
   const inbound = updated.tasks.find((item) => item.id === taskId);
   inbound.actualBookingTime = time;
@@ -115,7 +116,7 @@ async function replanOpenTrain(updated, pickupTime, trainSource) {
     updated.conflicts.push({ code: 'no-train-before-pickup', taskIds: ['train', 'inbound'],
       explanation: 'Ingen demoforbindelse ankommer før den oplyste afhentning. Kontakt trafikselskabet om ændring, eller kontrollér andre tog.' });
   }
- }
+}
 
 export async function refreshTrainSuggestion(plan, { trainSource = createDemoTrainSource() } = {}) {
   const pickupTime = plan.tasks.find((task) => task.id === 'inbound')?.actualBookingTime;
@@ -131,6 +132,7 @@ export function confirmBooking(plan, taskId) {
   if (!['inbound', 'outbound'].includes(taskId)) throw new Error('Kun handicapkørsel kan bekræftes.');
   const updated = structuredClone(plan);
   const task = updated.tasks.find((item) => item.id === taskId);
+  if (taskId === 'outbound' && task?.status !== 'afventer brugerinput') throw new Error('Afslut tidligere trin før første handicapkørsel bekræftes.');
   if (!task?.actualBookingTime) throw new Error('Registrér den oplyste afhentningstid først.');
   task.status = 'bestilt';
   task.confirmed = true;
@@ -142,7 +144,7 @@ export function confirmBooking(plan, taskId) {
 export function confirmAssistance(plan) {
   const updated = structuredClone(plan);
   const assistance = updated.tasks.find((task) => task.id === 'assistance');
-  if (!assistance?.trainId || assistance.status !== 'klar til booking') throw new Error('Kontrollér togforslaget før Handicapservice kan bekræftes.');
+  if (updated.conflicts?.length || !assistance?.trainId || assistance.status !== 'klar til booking') throw new Error('Kontrollér togforslaget før Handicapservice kan bekræftes.');
   assistance.status = 'bestilt';
   assistance.confirmed = true;
   refreshTaskReadiness(updated);

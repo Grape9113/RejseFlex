@@ -31,6 +31,7 @@ test('mobilbruger søger, vælger, registrerer tid, genberegner og genåbner den
     root.querySelector(`[data-place-option="${field}"]`).click();
   }
   form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
+  form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); await tick();
   assert.match(root.querySelector('#result').textContent, /DEMOREJSE.*Foreløbig rejseplan.*NÆSTE HANDLING/s);
   assert.equal(root.querySelectorAll('[data-journey-section]').length, 4);
@@ -61,6 +62,7 @@ test('alle fire demotrin kan registreres i rækkefølge', async () => {
     root.querySelector(`[data-place-option="${field}"]`).click();
   }
   form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
+  form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); await tick();
   root.querySelector('[data-select-plan]').click(); await tick();
   assert.equal(root.querySelector('[data-booking-time-outbound]'), null);

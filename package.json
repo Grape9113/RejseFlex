@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.22",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^26.1.0",
     "vite": "^7.1.0"
   },

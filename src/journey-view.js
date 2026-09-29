@@ -4,6 +4,15 @@ function demoTime(value) {
 
 export function placeName(place) { return place.label ?? place.name; }
 function operatorName(operator) { return typeof operator === 'string' ? operator : operator?.kind === 'unknown' ? 'ukendt' : operator?.name ?? 'ukendt'; }
+function handicapDetail(leg) {
+  if (leg.priceEstimate?.kind !== 'known') return 'Pris og bookingmåde afventer vejafstand eller trafikselskab.';
+  const fare = leg.priceEstimate;
+  const amount = new Intl.NumberFormat('da-DK', { maximumFractionDigits: 0 }).format(fare.estimatedPrice);
+  const normal = new Intl.NumberFormat('da-DK', { maximumFractionDigits: 0 }).format(fare.normalPrice);
+  const price = fare.discountApplied ? `ca. ${amount} kr. ved onlinebestilling (normalpris ca. ${normal} kr.)` : `ca. ${amount} kr.`;
+  const action = { BOOK_DIGITALLY: 'Bestil digitalt', CALL_HOME_PROVIDER: 'Ring til dit trafikselskab', CALL_FOR_CROSS_REGION_BOOKING: 'Ring om den samlede rejse', MANUAL_BOOKING_REQUIRED: 'Kontrollér bookingmåden' }[leg.handicapTrip.booking.actionType];
+  return `${price} ${action}. Vejafstand ca. ${Math.round(leg.distanceKm)} km. Afhentningstid afventer bestilling.`;
+}
 function assistanceFact(fact) {
   if (fact?.kind !== 'known') return 'ukendt';
   return `${fact.value} (kilde: ${fact.source ?? 'ukendt'}, sidst verificeret: ${fact.lastVerified ?? 'ukendt'})`;
@@ -23,13 +32,14 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
   result.replaceChildren();
   result.hidden = false;
 
+  const pricedHandicap = plan.legs[0].priceEstimate?.kind === 'known' && plan.legs[2].priceEstimate?.kind === 'known';
   const heading = element(document, 'div', 'result-heading');
   const titleBlock = element(document, 'div');
   titleBlock.append(
-    element(document, 'span', 'eyebrow', 'DEMOREJSE · IKKE TIL VIRKELIG PLANLÆGNING'),
+    element(document, 'span', 'eyebrow', pricedHandicap ? 'REJSEPLAN · TOGTIDER ILLUSTRATIVE' : 'DEMOREJSE · IKKE TIL VIRKELIG PLANLÆGNING'),
     element(document, 'h2', '', 'Din rejse i fire dele'),
   );
-  heading.append(titleBlock, element(document, 'span', 'demo-stamp', 'DEMO'));
+  heading.append(titleBlock, element(document, 'span', 'demo-stamp', pricedHandicap ? 'TOG DEMO' : 'DEMO'));
   result.append(heading);
 
   const summary = element(document, 'p', 'journey-summary');
@@ -69,17 +79,23 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
 
   const action = element(document, 'section', 'next-action');
   action.dataset.nextAction = '';
-  action.append(element(document, 'span', 'eyebrow', 'NÆSTE HANDLING · DEMO'), element(document, 'h3', '', plan.nextAction.title), element(document, 'p', '', plan.nextAction.explanation));
+  if (plan.nextAction.actionType) action.dataset.bookingAction = plan.nextAction.actionType;
+  action.append(element(document, 'span', 'eyebrow', plan.nextAction.mode === 'handicap-booking' ? 'NÆSTE HANDLING' : 'NÆSTE HANDLING · DEMO'), element(document, 'h3', '', plan.nextAction.title), element(document, 'p', '', plan.nextAction.explanation));
+  if (plan.nextAction.bookingUrl) {
+    const link = element(document, 'a', 'booking-link', 'Åbn trafikselskabets bestillingsinformation ↗');
+    link.href = plan.nextAction.bookingUrl; link.target = '_blank'; link.rel = 'noopener noreferrer';
+    action.append(link);
+  }
   result.insertBefore(action, uncertainties);
 
   const cards = element(document, 'div', 'journey-cards');
   const [first, train, last] = plan.legs;
   const assistance = plan.tasks.find((task) => task.id === 'assistance');
   const sections = [
-    { title: 'Handicapkørsel', eyebrow: '1 · Til afgangsstationen', detail: `${placeName(first.from)} → ${first.to.name}. Trafikselskab: ${operatorName(first.operator)}. Tid, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'outbound').status },
+    { title: 'Handicapkørsel', eyebrow: '1 · Til afgangsstationen', detail: `${placeName(first.from)} → ${first.to.name}. Trafikselskab: ${operatorName(first.operator)}. ${handicapDetail(first)}`, status: plan.tasks.find((task) => task.id === 'outbound').status },
     { title: 'Tog', eyebrow: '2 · Mellem stationer', detail: `${train.fromStation.name} → ${train.toStation.name}. DEMO afgang ${demoTime(train.plannedDeparture)}, ankomst ${demoTime(train.plannedArrival)}.`, status: plan.tasks.find((task) => task.id === 'train').status },
     { title: 'Handicapservice', eyebrow: '3 · Assistance ved toget', detail: `Knyttet til DEMO-tog ${assistance.trainId} ved stationerne ${assistance.stationIds?.join(' → ') ?? 'ukendt'}. Frist: ${assistanceFact(assistance.bookingDeadline)}. Mødetid: ${assistanceFact(assistance.meetingTime)}.`, status: assistance.status },
-    { title: 'Handicapkørsel', eyebrow: '4 · Til destinationen', detail: `${last.from.name} → ${placeName(last.to)}. Trafikselskab: ${operatorName(last.operator)}. Tid, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'inbound').status },
+    { title: 'Handicapkørsel', eyebrow: '4 · Til destinationen', detail: `${last.from.name} → ${placeName(last.to)}. Trafikselskab: ${operatorName(last.operator)}. ${handicapDetail(last)}`, status: plan.tasks.find((task) => task.id === 'inbound').status },
   ];
   for (const section of sections) {
     const card = element(document, 'article', 'journey-card');
@@ -94,13 +110,13 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
   }
   result.insertBefore(cards, uncertainties);
   if (!plan.selected) {
-    const choose = element(document, 'button', 'select-plan', 'Vælg denne demorejse');
+    const choose = element(document, 'button', 'select-plan', pricedHandicap ? 'Vælg denne rejse' : 'Vælg denne demorejse');
     choose.type = 'button';
     choose.dataset.selectPlan = '';
     choose.addEventListener('click', () => onSelect(plan));
     result.append(choose);
   } else {
-    result.append(element(document, 'p', 'selection-note', 'Demorejse valgt og gemt på denne enhed.'));
+    result.append(element(document, 'p', 'selection-note', pricedHandicap ? 'Rejse valgt og gemt på denne enhed.' : 'Demorejse valgt og gemt på denne enhed.'));
     for (const [taskId, title, timeLabel, dataSuffix] of [
       ['inbound', 'Sidste handicapkørsel', 'Faktisk oplyst afhentningstid', ''],
       ['outbound', 'Første handicapkørsel', 'Faktisk oplyst afhentningstid', 'Outbound'],

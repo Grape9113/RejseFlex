@@ -16,8 +16,8 @@ button{cursor:pointer}
 .planner-panel h1{font-family:Fraunces,Georgia,serif;font-size:28px;letter-spacing:-.035em;line-height:1.1;margin:0 0 18px}
 #journey-form{display:grid;gap:12px}
 .field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700}
-.field input,.place-field>input{height:45px;width:100%;border:1px solid #bfd0c5;border-radius:8px;background:#fff;color:#17332f;padding:0 12px;outline:none;font-weight:400}
-.field input:focus,.place-field>input:focus{border-color:#247462;box-shadow:0 0 0 3px #a4d7c555}
+.field input,.field select,.place-field>input{height:45px;width:100%;border:1px solid #bfd0c5;border-radius:8px;background:#fff;color:#17332f;padding:0 12px;outline:none;font-weight:400}
+.field input:focus,.field select:focus,.place-field>input:focus{border-color:#247462;box-shadow:0 0 0 3px #a4d7c555}
 .place-field{position:relative;min-width:0;display:grid;gap:6px}
 .place-feedback{color:#54685f;font-size:12px;min-height:0;line-height:1.35}
 .place-feedback:empty{display:none}

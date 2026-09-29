@@ -3,11 +3,12 @@ export function createJourneyStore(indexedDB = globalThis.indexedDB) {
   function database() {
     return new Promise((resolve, reject) => {
       if (!indexedDB) { reject(new Error('Lokal lagring er ikke tilgængelig.')); return; }
-      const request = indexedDB.open('rejseflex-local', 1);
+      const request = indexedDB.open('rejseflex-local', 2);
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains('journeys')) db.createObjectStore('journeys', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('documents')) db.createObjectStore('documents', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
       };
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
@@ -29,6 +30,8 @@ export function createJourneyStore(indexedDB = globalThis.indexedDB) {
     } finally { db.close(); }
   }
   return {
+    getHandicapProvider: async () => (await operation('settings', 'readonly', (store) => store.get('handicapProvider')))?.value ?? null,
+    setHandicapProvider: (value) => operation('settings', 'readwrite', (store) => store.put({ id: 'handicapProvider', value })),
     list: () => operation('journeys', 'readonly', (store) => store.getAll()),
     save: (plan) => operation('journeys', 'readwrite', (store) => store.put(plan)),
     // Document references belong in a journey; file bytes remain in this local store.

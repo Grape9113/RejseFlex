@@ -31,6 +31,7 @@ test('user searches and selects both addresses before planning', async () => {
   assert.equal(shown.at(-1).length, 2);
   assert.match(root.textContent, /Adressesøgning sendes til Photon, mens du skriver/i);
   form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
+  form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.match(root.querySelector('#result').textContent, /Søndersø, Nordfyn/);

@@ -1,5 +1,5 @@
 // Public journey seam: a wish and replaceable sources yield one provisional demo plan.
-import { demoRules, evaluateRules } from './rules.js';
+import { demoRules, demoTaskGuidance, demoConflictGuidance, evaluateRules } from './rules.js';
 export function createDemoTrainSource() {
   return {
     async findConnections(wish, { beforeArrival } = {}) {
@@ -29,30 +29,22 @@ function sameTrain(a, b) {
 }
 
 function bookingAction(plan) {
-  if (plan.conflicts?.some((conflict) => conflict.code === 'assistance-train-changed')) return {
-    taskId: 'assistance', title: 'Kontrollér Handicapservice-aftalen',
-    explanation: 'Handicapservice er bekræftet til en anden togplan. Kontrollér den eksterne aftale hos DSB, før du fortsætter. Appen ændrer ikke aftalen.', mode: 'demo',
-  };
-  if (plan.conflicts?.length) return {
-    taskId: 'inbound', title: 'Tiderne passer ikke sammen',
-    explanation: 'Det valgte tog kan ikke nå den oplyste afhentning. Kontakt trafikselskabet for at ændre aftalen eller find et andet tog. Bekræftede aftaler ændres ikke i appen.', mode: 'demo',
-  };
-  const tasks = plan.tasks;
-  const inbound = tasks.find((task) => task.id === 'inbound');
-  if (inbound?.actualBookingTime && !inbound.confirmed) return {
-    taskId: 'inbound', title: 'Bekræft den eksterne bestilling',
-    explanation: 'Afhentningstiden er registreret, men bestillingen er ikke bekræftet. Bekræft kun, hvis du har gennemført den hos trafikselskabet.', mode: 'demo',
-  };
-  if (!inbound?.confirmed) return plan.nextAction;
-  const actions = {
-    train: ['Kontrollér togforslaget', 'Togforslaget er genberegnet. Kontrollér forbindelsen og den ukendte overgangsbuffer før du markerer togvalget som kontrolleret.'],
-    assistance: ['Afklar Handicapservice', 'Kontrollér frist og mødetid hos DSB, og bekræft kun en gennemført ekstern bestilling.'],
-    outbound: ['Afklar første handicapkørsel', 'Kontrollér trafikområde, bookingkanal og nødvendig tid til afgangsstationen hos trafikselskabet. Togtider og overgangsbuffer er fortsat illustrative eller ukendte.'],
-  };
-  const next = tasks.find((task) => task.id !== 'inbound' && !['bestilt', 'færdig'].includes(task.status));
+  const conflict = plan.conflicts?.[0];
+  if (conflict) return { ...(demoConflictGuidance[conflict.code] ?? {
+    taskId: conflict.taskIds[0], title: 'Kontrollér rejseplanen', explanation: conflict.explanation,
+  }), mode: 'demo' };
+  const next = plan.tasks.find((task) => !['bestilt', 'færdig'].includes(task.status) &&
+    task.dependsOn.every((id) => {
+      const dependency = plan.tasks.find((item) => item.id === id);
+      return dependency?.confirmed || dependency?.status === 'færdig';
+    }));
   if (!next) return { taskId: 'outbound', title: 'Bookingforløbet er registreret', explanation: 'Alle demotrins eksterne aftaler er registreret. Kontrollér fortsat de ukendte forhold før en virkelig rejse.', mode: 'demo' };
-  const [title, explanation] = actions[next.id];
-  return { taskId: next.id, title, explanation, mode: 'demo' };
+  const guidance = demoTaskGuidance[next.id];
+  const pending = next.actualBookingTime && !next.confirmed ? guidance.pending : null;
+  const blocking = plan.uncertainties?.find((item) => item.taskId === next.id && item.code !== 'unknown-price');
+  const orderRule = plan.appliedRules?.find((item) => item.effect?.firstTaskId === next.id);
+  return { taskId: next.id, title: pending?.title ?? guidance.title,
+    explanation: pending?.explanation ?? [orderRule?.explanation, blocking?.explanation, guidance.explanation].filter(Boolean).join(' '), mode: 'demo' };
 }
 
 function refreshTaskReadiness(plan) {
@@ -197,15 +189,11 @@ export async function proposeJourney(wish, { trainSource = createDemoTrainSource
       meetingTime: { kind: 'unknown' }, tips: [] },
     { id: 'outbound', kind: 'handicapkørsel', status: 'ikke klar', dependsOn: ['assistance'] },
   ];
-  const blocking = uncertainties.find((item) => item.taskId === 'inbound' && item.code !== 'unknown-price');
-  return {
+  const plan = {
     kind: 'journey', origin: 'demo', feasibility: 'foreløbig', selected: false,
     wish, legs: [firstLeg, trainLeg, lastLeg], tasks, uncertainties, appliedRules: evaluated.applied,
-    nextAction: {
-      taskId: 'inbound', title: 'Afklar sidste handicapkørsel',
-      explanation: [orderRule?.explanation, blocking?.explanation,
-        'Tid, bookingkanal og pris for sidste handicapkørsel skal kontrolleres hos trafikselskabet.'].filter(Boolean).join(' '),
-      mode: 'demo',
-    },
+    nextAction: null,
   };
+  plan.nextAction = bookingAction(plan);
+  return plan;
 }

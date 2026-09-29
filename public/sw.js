@@ -1,4 +1,4 @@
-const CACHE = 'rejseflex-public-v1';
+const CACHE = 'rejseflex-public-v2';
 const SCOPE = self.registration.scope;
 const SHELL = [SCOPE, `${SCOPE}manifest.webmanifest`];
 
@@ -12,6 +12,16 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request).then((response) => {
+      if (response.ok && new URL(event.request.url).pathname === new URL(SCOPE).pathname) {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE).then((cache) => cache.put(event.request, copy)));
+      }
+      return response;
+    }).catch(async () => (await caches.match(event.request)) ?? caches.match(SCOPE)));
+    return;
+  }
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
     const path = new URL(event.request.url).pathname;
     const basePath = new URL(SCOPE).pathname;

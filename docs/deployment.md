@@ -1,0 +1,7 @@
+# Stage 1 demo deployment
+
+The public GitHub Pages artifact is built from `main` or `stage-1-integration` by `.github/workflows/pages.yml`. Run `npm run verify:deploy` locally to build and reject unexpected files in `dist`. The repository path is `/RejseFlex/`; the manifest and service worker use this scope. Navigation fetches the current page online and uses the cached shell offline. Personal plans and later documents stay in browser IndexedDB and are never part of `dist`.
+
+The public Nominatim geocoder is a replaceable, user-triggered **low-traffic demo** adapter. Its one-request-per-second limit is aggregate across app users, not a per-device production allowance. Choose a suitable provider or hosted service before wider use; do not assume the current adapter scales. Search text goes to Nominatim and map tile requests go to OpenStreetMap. The demo train times and unknown transport rules are not usable travel advice.
+
+Manual verification on the published Pages URL: open `/RejseFlex/`, choose both addresses, show a demo plan, select it, record the last pickup time, confirm the external booking and Handicapservice, then reload and reopen the plan. Check the demo, provisional and next-action messages at each step. Install from a supported mobile browser and relaunch; test a reload both online and offline. Confirm no personal plan or uploaded file appears in the Actions artifact or browser network uploads.

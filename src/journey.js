@@ -32,6 +32,10 @@ function bookingAction(plan) {
     taskId: 'inbound', title: 'Bekræft den eksterne bestilling',
     explanation: 'Afhentningstiden er registreret, men bestillingen er ikke bekræftet. Bekræft kun, hvis du har gennemført den hos trafikselskabet.', mode: 'demo',
   };
+  if (inbound?.status === 'bestilt' && plan.tasks.find((task) => task.id === 'assistance')?.confirmed) return {
+    taskId: 'outbound', title: 'Afklar første handicapkørsel',
+    explanation: 'Kontrollér trafikområde, bookingkanal og nødvendig tid til afgangsstationen hos trafikselskabet. Togtider og overgangsbuffer er fortsat illustrative eller ukendte.', mode: 'demo',
+  };
   if (inbound?.status === 'bestilt') return {
     taskId: 'train', title: 'Kontrollér togforslaget',
     explanation: 'Sidste handicapkørsel er bekræftet. Togforslaget er genberegnet, men nødvendig overgangsbuffer er ukendt og skal kontrolleres før bestilling.', mode: 'demo',
@@ -96,6 +100,9 @@ export function confirmAssistance(plan) {
   if (!assistance?.trainId) throw new Error('Vælg et tog før Handicapservice bekræftes.');
   assistance.status = 'bestilt';
   assistance.confirmed = true;
+  if (updated.tasks.find((task) => task.id === 'inbound')?.status === 'bestilt') {
+    updated.tasks.find((task) => task.id === 'outbound').status = 'afventer brugerinput';
+  }
   updated.nextAction = bookingAction(updated);
   return updated;
 }

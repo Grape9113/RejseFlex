@@ -18,43 +18,79 @@ export function createDemoTrainSource() {
   };
 }
 
+function trainIdentity(train) {
+  return {
+    id: train.id, fromStationId: train.fromStation.id, toStationId: train.toStation.id,
+    plannedDeparture: train.plannedDeparture, plannedArrival: train.plannedArrival,
+  };
+}
+function sameTrain(a, b) {
+  return a && b && Object.keys(a).every((key) => a[key] === b[key]);
+}
+
 function bookingAction(plan) {
-  const inbound = plan.tasks.find((task) => task.id === 'inbound');
   if (plan.conflicts?.some((conflict) => conflict.code === 'assistance-train-changed')) return {
     taskId: 'assistance', title: 'Kontrollér Handicapservice-aftalen',
-    explanation: 'Handicapservice er bekræftet til et andet tog. Kontrollér den eksterne aftale hos DSB, før du fortsætter. Appen ændrer ikke aftalen.', mode: 'demo',
+    explanation: 'Handicapservice er bekræftet til en anden togplan. Kontrollér den eksterne aftale hos DSB, før du fortsætter. Appen ændrer ikke aftalen.', mode: 'demo',
   };
   if (plan.conflicts?.length) return {
     taskId: 'inbound', title: 'Tiderne passer ikke sammen',
     explanation: 'Det valgte tog kan ikke nå den oplyste afhentning. Kontakt trafikselskabet for at ændre aftalen eller find et andet tog. Bekræftede aftaler ændres ikke i appen.', mode: 'demo',
   };
-  if (inbound?.actualBookingTime && inbound.status !== 'bestilt') return {
+  const tasks = plan.tasks;
+  const inbound = tasks.find((task) => task.id === 'inbound');
+  if (inbound?.actualBookingTime && !inbound.confirmed) return {
     taskId: 'inbound', title: 'Bekræft den eksterne bestilling',
     explanation: 'Afhentningstiden er registreret, men bestillingen er ikke bekræftet. Bekræft kun, hvis du har gennemført den hos trafikselskabet.', mode: 'demo',
   };
-  if (inbound?.status === 'bestilt' && plan.tasks.find((task) => task.id === 'assistance')?.confirmed) return {
-    taskId: 'outbound', title: 'Afklar første handicapkørsel',
-    explanation: 'Kontrollér trafikområde, bookingkanal og nødvendig tid til afgangsstationen hos trafikselskabet. Togtider og overgangsbuffer er fortsat illustrative eller ukendte.', mode: 'demo',
+  if (!inbound?.confirmed) return plan.nextAction;
+  const actions = {
+    train: ['Kontrollér togforslaget', 'Togforslaget er genberegnet. Kontrollér forbindelsen og den ukendte overgangsbuffer før du markerer togvalget som kontrolleret.'],
+    assistance: ['Afklar Handicapservice', 'Kontrollér frist og mødetid hos DSB, og bekræft kun en gennemført ekstern bestilling.'],
+    outbound: ['Afklar første handicapkørsel', 'Kontrollér trafikområde, bookingkanal og nødvendig tid til afgangsstationen hos trafikselskabet. Togtider og overgangsbuffer er fortsat illustrative eller ukendte.'],
   };
-  if (inbound?.status === 'bestilt') return {
-    taskId: 'train', title: 'Kontrollér togforslaget',
-    explanation: 'Sidste handicapkørsel er bekræftet. Togforslaget er genberegnet, men nødvendig overgangsbuffer er ukendt og skal kontrolleres før bestilling.', mode: 'demo',
-  };
-  return plan.nextAction;
+  const next = tasks.find((task) => task.id !== 'inbound' && !['bestilt', 'færdig'].includes(task.status));
+  if (!next) return { taskId: 'outbound', title: 'Bookingforløbet er registreret', explanation: 'Alle demotrins eksterne aftaler er registreret. Kontrollér fortsat de ukendte forhold før en virkelig rejse.', mode: 'demo' };
+  const [title, explanation] = actions[next.id];
+  return { taskId: next.id, title, explanation, mode: 'demo' };
+}
+
+function refreshTaskReadiness(plan) {
+  for (const task of plan.tasks) {
+    if (['bestilt', 'færdig', 'afventer brugerinput'].includes(task.status)) continue;
+    if (task.id === 'inbound') continue;
+    const ready = task.dependsOn.every((id) => {
+      const dependency = plan.tasks.find((item) => item.id === id);
+      return dependency?.confirmed || dependency?.status === 'færdig';
+    });
+    task.status = ready ? 'klar til booking' : 'ikke klar';
+  }
 }
 
 export async function recordBookingTime(plan, taskId, time, { trainSource = createDemoTrainSource() } = {}) {
-  if (taskId !== 'inbound') throw new Error('Kun sidste handicapkørsel kan tidsregistreres i denne demo.');
+  if (!['inbound', 'outbound'].includes(taskId)) throw new Error('Kun handicapkørsel kan tidsregistreres.');
   if (!Number.isFinite(Date.parse(time))) throw new Error('Angiv en gyldig afhentningstid.');
   const task = plan.tasks.find((item) => item.id === taskId);
   if (task?.status === 'bestilt') throw new Error('En bekræftet aftale kan ikke ændres automatisk.');
+  if (taskId === 'outbound' && !['klar til booking', 'afventer brugerinput'].includes(task?.status)) throw new Error('Afslut tidligere trin før første handicapkørsel registreres.');
   const updated = structuredClone(plan);
   const inbound = updated.tasks.find((item) => item.id === taskId);
   inbound.actualBookingTime = time;
   inbound.status = 'afventer brugerinput';
   updated.legs.find((leg) => leg.id === taskId).actualBookingTime = time;
-  const connections = await trainSource.findConnections(updated.wish, { beforeArrival: time });
-  const candidate = [...connections].filter((connection) => Date.parse(connection.plannedArrival) <= Date.parse(time))
+  if (taskId === 'outbound') {
+    updated.nextAction = bookingAction(updated);
+    return updated;
+  }
+  await replanOpenTrain(updated, time, trainSource);
+  refreshTaskReadiness(updated);
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
+async function replanOpenTrain(updated, pickupTime, trainSource) {
+  const connections = await trainSource.findConnections(updated.wish, { beforeArrival: pickupTime });
+  const candidate = [...connections].filter((connection) => Date.parse(connection.plannedArrival) <= Date.parse(pickupTime))
     .sort((a, b) => Date.parse(b.plannedArrival) - Date.parse(a.plannedArrival))[0];
   updated.uncertainties = updated.uncertainties.filter((item) => item.code !== 'unknown-transfer-buffer');
   updated.uncertainties.push({ code: 'unknown-transfer-buffer', taskId: 'train',
@@ -64,32 +100,43 @@ export async function recordBookingTime(plan, taskId, time, { trainSource = crea
   if (candidate) {
     updated.legs[1] = { id: 'train', kind: 'tog', ...candidate };
     const assistance = updated.tasks.find((item) => item.id === 'assistance');
-    if (assistance.confirmed && assistance.trainId !== candidate.id) {
+    if (assistance.confirmed && !sameTrain(assistance.trainIdentity, trainIdentity(candidate))) {
       updated.feasibility = 'konflikt';
       updated.conflicts.push({ code: 'assistance-train-changed', taskIds: ['train', 'assistance'],
         explanation: 'Handicapservice er bekræftet til et andet tog. Kontrollér den eksterne aftale hos DSB. RejseFlex ændrer den ikke.' });
     } else if (!assistance.confirmed) {
       assistance.trainId = candidate.id;
+      assistance.trainIdentity = trainIdentity(candidate);
       assistance.stationIds = [candidate.fromStation.id, candidate.toStation.id];
     }
-    updated.tasks.find((item) => item.id === 'train').status = 'afventer brugerinput';
+    updated.tasks.find((item) => item.id === 'train').status = 'ikke klar';
   } else {
     updated.feasibility = 'konflikt';
     updated.tasks.find((item) => item.id === 'train').status = 'kræver genberegning';
     updated.conflicts.push({ code: 'no-train-before-pickup', taskIds: ['train', 'inbound'],
       explanation: 'Ingen demoforbindelse ankommer før den oplyste afhentning. Kontakt trafikselskabet om ændring, eller kontrollér andre tog.' });
   }
+}
+
+export async function refreshTrainSuggestion(plan, { trainSource = createDemoTrainSource() } = {}) {
+  const pickupTime = plan.tasks.find((task) => task.id === 'inbound')?.actualBookingTime;
+  if (!pickupTime) throw new Error('Registrér sidste handicapkørsel først.');
+  const updated = structuredClone(plan);
+  await replanOpenTrain(updated, pickupTime, trainSource);
+  refreshTaskReadiness(updated);
   updated.nextAction = bookingAction(updated);
   return updated;
 }
 
 export function confirmBooking(plan, taskId) {
-  if (taskId !== 'inbound') throw new Error('Kun sidste handicapkørsel kan bekræftes i denne demo.');
+  if (!['inbound', 'outbound'].includes(taskId)) throw new Error('Kun handicapkørsel kan bekræftes.');
   const updated = structuredClone(plan);
   const task = updated.tasks.find((item) => item.id === taskId);
+  if (taskId === 'outbound' && task?.status !== 'afventer brugerinput') throw new Error('Afslut tidligere trin før første handicapkørsel bekræftes.');
   if (!task?.actualBookingTime) throw new Error('Registrér den oplyste afhentningstid først.');
   task.status = 'bestilt';
   task.confirmed = true;
+  refreshTaskReadiness(updated);
   updated.nextAction = bookingAction(updated);
   return updated;
 }
@@ -97,12 +144,20 @@ export function confirmBooking(plan, taskId) {
 export function confirmAssistance(plan) {
   const updated = structuredClone(plan);
   const assistance = updated.tasks.find((task) => task.id === 'assistance');
-  if (!assistance?.trainId) throw new Error('Vælg et tog før Handicapservice bekræftes.');
+  if (updated.conflicts?.length || !assistance?.trainId || assistance.status !== 'klar til booking') throw new Error('Kontrollér togforslaget før Handicapservice kan bekræftes.');
   assistance.status = 'bestilt';
   assistance.confirmed = true;
-  if (updated.tasks.find((task) => task.id === 'inbound')?.status === 'bestilt') {
-    updated.tasks.find((task) => task.id === 'outbound').status = 'afventer brugerinput';
-  }
+  refreshTaskReadiness(updated);
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
+export function confirmTrainChoice(plan) {
+  const updated = structuredClone(plan);
+  const task = updated.tasks.find((item) => item.id === 'train');
+  if (task?.status !== 'klar til booking' || updated.conflicts?.length) throw new Error('Togforslaget kan først kontrolleres efter sidste handicapkørsel og uden konflikt.');
+  task.status = 'færdig';
+  refreshTaskReadiness(updated);
   updated.nextAction = bookingAction(updated);
   return updated;
 }
@@ -138,7 +193,7 @@ export async function proposeJourney(wish, { trainSource = createDemoTrainSource
     { id: 'inbound', kind: 'handicapkørsel', status: orderRule && toArea.kind === 'known' ? 'klar til booking' : 'afventer brugerinput', dependsOn: [] },
     { id: 'train', kind: 'togvalg', status: 'ikke klar', dependsOn: ['inbound'] },
     { id: 'assistance', kind: 'Handicapservice', status: 'ikke klar', dependsOn: ['train'], trainId: train.id,
-      stationIds: [train.fromStation.id, train.toStation.id], bookingDeadline: { kind: 'unknown' },
+      stationIds: [train.fromStation.id, train.toStation.id], trainIdentity: trainIdentity(train), bookingDeadline: { kind: 'unknown' },
       meetingTime: { kind: 'unknown' }, tips: [] },
     { id: 'outbound', kind: 'handicapkørsel', status: 'ikke klar', dependsOn: ['assistance'] },
   ];

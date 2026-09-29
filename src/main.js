@@ -5,7 +5,7 @@ import { geocoder } from './geocoding.js';
 import { mountMap } from './map.js';
 
 const root = document.querySelector('#app');
-mountApp(root, { geocoder, map: mountMap(root.querySelector('#address-map')) });
+mountApp(root, { geocoder, mapFactory: mountMap });
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

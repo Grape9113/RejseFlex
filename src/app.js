@@ -41,7 +41,20 @@ function renderJourney(root, plan) {
     dateStyle: 'long', timeStyle: 'short',
   }).format(arrival);
   result.append(element(document, 'p', 'arrival-note', `Ønsket ankomst på destinationsadressen: ${dateText}`));
-  result.append(element(document, 'p', 'provisional-note', 'Foreløbig demo: Togtiderne er illustrative. Handicapkørsel, mødetid, bookingkanal, trafikselskab og pris er ukendt. Brug ikke planen til en virkelig rejse.'));
+  result.append(element(document, 'p', 'provisional-note', 'Foreløbig rejseplan: Nødvendige oplysninger skal kontrolleres. DEMO: Togtiderne er illustrative. Brug ikke planen til en virkelig rejse.'));
+  const uncertainties = element(document, 'section', 'journey-uncertainties');
+  uncertainties.dataset.uncertainties = '';
+  uncertainties.append(element(document, 'h3', '', 'Skal kontrolleres før bestilling'));
+  for (const uncertainty of plan.uncertainties ?? []) {
+    uncertainties.append(element(document, 'p', '', uncertainty.explanation));
+  }
+  result.append(uncertainties);
+  const ruleNotes = element(document, 'section', 'journey-rules');
+  ruleNotes.dataset.appliedRules = '';
+  for (const rule of plan.appliedRules ?? []) {
+    ruleNotes.append(element(document, 'p', '', `${rule.explanation} Kilde: ${rule.source}. Sidst verificeret: ${rule.lastVerified}.`));
+  }
+  result.append(ruleNotes);
 
   const action = element(document, 'section', 'next-action');
   action.dataset.nextAction = '';

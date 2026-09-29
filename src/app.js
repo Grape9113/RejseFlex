@@ -1,4 +1,4 @@
-import { proposeJourney, recordBookingTime, confirmBooking } from './journey.js';
+import { proposeJourney, recordBookingTime, confirmBooking, confirmAssistance } from './journey.js';
 import { createJourneyStore } from './journey-store.js';
 
 function demoTime(value) {
@@ -7,6 +7,10 @@ function demoTime(value) {
 
 function placeName(place) { return place.label ?? place.name; }
 function operatorName(operator) { return typeof operator === 'string' ? operator : operator?.kind === 'unknown' ? 'ukendt' : operator?.name ?? 'ukendt'; }
+function assistanceFact(fact) {
+  if (fact?.kind !== 'known') return 'ukendt';
+  return `${fact.value} (kilde: ${fact.source ?? 'ukendt'}, sidst verificeret: ${fact.lastVerified ?? 'ukendt'})`;
+}
 
 function element(document, tag, className, text) {
   const node = document.createElement(tag);
@@ -72,10 +76,11 @@ function renderJourney(root, plan, onSelect, onUpdate) {
 
   const cards = element(document, 'div', 'journey-cards');
   const [first, train, last] = plan.legs;
+  const assistance = plan.tasks.find((task) => task.id === 'assistance');
   const sections = [
     { title: 'Handicapkørsel', eyebrow: '1 · Til afgangsstationen', detail: `${placeName(first.from)} → ${first.to.name}. Trafikselskab: ${operatorName(first.operator)}. Tid, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'outbound').status },
     { title: 'Tog', eyebrow: '2 · Mellem stationer', detail: `${train.fromStation.name} → ${train.toStation.name}. DEMO afgang ${demoTime(train.plannedDeparture)}, ankomst ${demoTime(train.plannedArrival)}.`, status: plan.tasks.find((task) => task.id === 'train').status },
-    { title: 'Handicapservice', eyebrow: '3 · Assistance ved toget', detail: `Knyttet til DEMO-toget ${train.fromStation.name} → ${train.toStation.name}. Frist og mødetid ukendt.`, status: plan.tasks.find((task) => task.id === 'assistance').status },
+    { title: 'Handicapservice', eyebrow: '3 · Assistance ved toget', detail: `Knyttet til DEMO-tog ${assistance.trainId} ved stationerne ${assistance.stationIds?.join(' → ') ?? 'ukendt'}. Frist: ${assistanceFact(assistance.bookingDeadline)}. Mødetid: ${assistanceFact(assistance.meetingTime)}.`, status: assistance.status },
     { title: 'Handicapkørsel', eyebrow: '4 · Til destinationen', detail: `${last.from.name} → ${placeName(last.to)}. Trafikselskab: ${operatorName(last.operator)}. Tid, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'inbound').status },
   ];
   for (const section of sections) {
@@ -121,6 +126,19 @@ function renderJourney(root, plan, onSelect, onUpdate) {
       }
     }
     result.append(booking);
+    const assistanceSection = element(document, 'section', 'booking-entry');
+    assistanceSection.dataset.assistanceTask = '';
+    assistanceSection.append(element(document, 'h3', '', 'Handicapservice'));
+    assistanceSection.append(element(document, 'p', '', `Tog ${assistance.trainId}; stationer ${assistance.stationIds?.join(' → ') ?? 'ukendt'}. Frist: ${assistanceFact(assistance.bookingDeadline)}. Mødetid: ${assistanceFact(assistance.meetingTime)}.`));
+    for (const tip of assistance.tips ?? []) assistanceSection.append(element(document, 'p', '', `${tip.text} Kilde: ${tip.source ?? 'ukendt'}. Sidst verificeret: ${tip.lastVerified ?? 'ukendt'}.`));
+    if (assistance.confirmed) assistanceSection.append(element(document, 'p', '', 'Bekræftet ekstern Handicapservice-bestilling. Aftalen ændres ikke automatisk.'));
+    else {
+      const confirm = element(document, 'button', '', 'Bekræft ekstern Handicapservice-bestilling');
+      confirm.type = 'button'; confirm.dataset.confirmAssistance = '';
+      confirm.addEventListener('click', () => void onUpdate(plan, 'confirm-assistance'));
+      assistanceSection.append(confirm);
+    }
+    result.append(assistanceSection);
   }
   result.append(element(document, 'p', 'booking-note', 'RejseFlex bestiller ikke handicapkørsel, Handicapservice eller billetter.'));
   result.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
@@ -200,7 +218,7 @@ export function mountApp(root, { geocoder, map, trainSource, journeyStore = crea
     try {
       const updated = action === 'time'
         ? await recordBookingTime(plan, 'inbound', value, { trainSource })
-        : confirmBooking(plan, 'inbound');
+        : action === 'confirm-assistance' ? confirmAssistance(plan) : confirmBooking(plan, 'inbound');
       await journeyStore.save(updated);
       renderJourney(root, updated, saveSelected, updateBooking);
       await showSavedJourneys();

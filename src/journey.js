@@ -57,7 +57,8 @@ export async function proposeJourney(wish, { trainSource = createDemoTrainSource
     wish, legs: [firstLeg, trainLeg, lastLeg], tasks, uncertainties, appliedRules: evaluated.applied,
     nextAction: {
       taskId: 'inbound', title: 'Afklar sidste handicapkørsel',
-      explanation: [orderRule?.explanation, blocking?.explanation].filter(Boolean).join(' '),
+      explanation: [orderRule?.explanation, blocking?.explanation,
+        'Tid, bookingkanal og pris for sidste handicapkørsel skal kontrolleres hos trafikselskabet.'].filter(Boolean).join(' '),
       mode: 'demo',
     },
   };

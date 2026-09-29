@@ -30,4 +30,5 @@ test('an expired necessary rule creates a control action instead of a booking in
   assert.equal(plan.feasibility, 'foreløbig');
   assert.ok(plan.uncertainties.some((item) => item.code === 'expired-required-rule'));
   assert.match(plan.nextAction.title, /kontrollér|afklar/i);
+  assert.match(plan.nextAction.explanation, /udløbet/i);
 });

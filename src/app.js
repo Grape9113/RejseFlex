@@ -6,6 +6,7 @@ function demoTime(value) {
 }
 
 function placeName(place) { return place.label ?? place.name; }
+function operatorName(operator) { return typeof operator === 'string' ? operator : operator?.kind === 'unknown' ? 'ukendt' : operator?.name ?? 'ukendt'; }
 
 function element(document, tag, className, text) {
   const node = document.createElement(tag);
@@ -42,7 +43,20 @@ function renderJourney(root, plan, onSelect) {
     dateStyle: 'long', timeStyle: 'short',
   }).format(arrival);
   result.append(element(document, 'p', 'arrival-note', `Ønsket ankomst på destinationsadressen: ${dateText}`));
-  result.append(element(document, 'p', 'provisional-note', 'Foreløbig demo: Togtiderne er illustrative. Handicapkørsel, mødetid, bookingkanal, trafikselskab og pris er ukendt. Brug ikke planen til en virkelig rejse.'));
+  result.append(element(document, 'p', 'provisional-note', 'Foreløbig rejseplan: Nødvendige oplysninger skal kontrolleres. DEMO: Togtiderne er illustrative. Brug ikke planen til en virkelig rejse.'));
+  const uncertainties = element(document, 'section', 'journey-uncertainties');
+  uncertainties.dataset.uncertainties = '';
+  uncertainties.append(element(document, 'h3', '', 'Skal kontrolleres før bestilling'));
+  for (const uncertainty of plan.uncertainties ?? []) {
+    uncertainties.append(element(document, 'p', '', uncertainty.explanation));
+  }
+  result.append(uncertainties);
+  const ruleNotes = element(document, 'section', 'journey-rules');
+  ruleNotes.dataset.appliedRules = '';
+  for (const rule of plan.appliedRules ?? []) {
+    ruleNotes.append(element(document, 'p', '', `${rule.explanation} Kilde: ${rule.source}. Sidst verificeret: ${rule.lastVerified}.`));
+  }
+  result.append(ruleNotes);
 
   const action = element(document, 'section', 'next-action');
   action.dataset.nextAction = '';
@@ -52,10 +66,10 @@ function renderJourney(root, plan, onSelect) {
   const cards = element(document, 'div', 'journey-cards');
   const [first, train, last] = plan.legs;
   const sections = [
-    { title: 'Handicapkørsel', eyebrow: '1 · Til afgangsstationen', detail: `${placeName(first.from)} → ${first.to.name}. Tid, trafikselskab, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'outbound').status },
+    { title: 'Handicapkørsel', eyebrow: '1 · Til afgangsstationen', detail: `${placeName(first.from)} → ${first.to.name}. Trafikselskab: ${operatorName(first.operator)}. Tid, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'outbound').status },
     { title: 'Tog', eyebrow: '2 · Mellem stationer', detail: `${train.fromStation.name} → ${train.toStation.name}. DEMO afgang ${demoTime(train.plannedDeparture)}, ankomst ${demoTime(train.plannedArrival)}.`, status: plan.tasks.find((task) => task.id === 'train').status },
     { title: 'Handicapservice', eyebrow: '3 · Assistance ved toget', detail: `Knyttet til DEMO-toget ${train.fromStation.name} → ${train.toStation.name}. Frist og mødetid ukendt.`, status: plan.tasks.find((task) => task.id === 'assistance').status },
-    { title: 'Handicapkørsel', eyebrow: '4 · Til destinationen', detail: `${last.from.name} → ${placeName(last.to)}. Tid, trafikselskab, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'inbound').status },
+    { title: 'Handicapkørsel', eyebrow: '4 · Til destinationen', detail: `${last.from.name} → ${placeName(last.to)}. Trafikselskab: ${operatorName(last.operator)}. Tid, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'inbound').status },
   ];
   for (const section of sections) {
     const card = element(document, 'article', 'journey-card');

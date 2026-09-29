@@ -1,13 +1,15 @@
 import L from 'leaflet';
 
 export function mountMap(container) {
-  const map = L.map(container, { scrollWheelZoom: false }).setView([56.1, 10.2], 6);
+  const map = L.map(container, { scrollWheelZoom: false, zoomControl: false }).setView([56.1, 10.2], 7);
+  L.control.zoom({ position: 'topright' }).addTo(map);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
     maxZoom: 19,
   }).addTo(map);
   let markers = [];
   return {
+    resize() { map.invalidateSize(); },
     show(places) {
       markers.forEach((marker) => marker.remove());
       markers = places.map((place) => L.marker([place.coordinates.latitude, place.coordinates.longitude]).addTo(map).bindPopup(place.label));

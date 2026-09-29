@@ -36,7 +36,7 @@ test('bruger kan bekræfte Handicapservice særskilt og genåbne den lokalt', as
   const root = dom.window.document.querySelector('#app');
   mountApp(root, { journeyStore: store, trainSource: source });
   const form = root.querySelector('form');
-  form.elements.from.value = 'Start'; form.elements.to.value = 'Slut'; form.elements.arrival.value = '2026-10-02T14:00';
+  form.elements.from.value = 'Start'; form.elements.to.value = 'Slut'; form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await tick(); root.querySelector('[data-select-plan]').click(); await tick();
   assert.match(root.querySelector('[data-assistance-task]').textContent, /frist.*ukendt.*mødetid.*ukendt/i);

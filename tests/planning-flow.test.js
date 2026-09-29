@@ -25,11 +25,11 @@ test('selected journey wish yields a demo chain and explained next action', asyn
   form.elements.from.value = from.label;
   form.elements.to.value = to.label;
   for (const field of ['from', 'to']) {
-    root.querySelector(`[data-search="${field}"]`).click();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    form.elements[field].dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 350));
     root.querySelector(`[data-place-option="${field}"]`).click();
   }
-  form.elements.arrival.value = '2026-10-02T14:00';
+  form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));
 

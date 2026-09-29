@@ -3,9 +3,10 @@ import { demoRules, demoTaskGuidance, demoConflictGuidance, evaluateRules } from
 export function createDemoTrainSource() {
   return {
     async findConnections(wish, { beforeArrival } = {}) {
-      const arrival = new Date(beforeArrival ?? wish.arrival).getTime();
-      const trainArrival = new Date(arrival - 90 * 60_000).toISOString();
-      const trainDeparture = new Date(arrival - 180 * 60_000).toISOString();
+      const isDeparture = wish.timeMode === 'departure' && !beforeArrival;
+      const anchor = new Date(beforeArrival ?? (isDeparture ? wish.departure : wish.arrival)).getTime();
+      const trainDeparture = new Date(anchor + (isDeparture ? 90 : -180) * 60_000).toISOString();
+      const trainArrival = new Date(anchor + (isDeparture ? 180 : -90) * 60_000).toISOString();
       return [{
         id: 'illustrative-train',
         fromStation: { id: 'demo-start', name: 'Demostation ved start' },
@@ -161,7 +162,7 @@ export async function proposeJourney(wish, { trainSource = createDemoTrainSource
   const [fromArea, toArea] = await Promise.all([
     trafficAreaSource.classify(wish.from.coordinates), trafficAreaSource.classify(wish.to.coordinates),
   ]);
-  const evaluated = evaluateRules(rules, { onDate: wish.arrival.slice(0, 10), areaId: toArea.areaId });
+  const evaluated = evaluateRules(rules, { onDate: (wish.timeMode === 'departure' ? wish.departure : wish.arrival).slice(0, 10), areaId: toArea.areaId });
   const uncertainties = [...evaluated.uncertainties];
   for (const [taskId, area] of [['outbound', fromArea], ['inbound', toArea]]) {
     if (area.kind !== 'known') uncertainties.push({ code: 'unknown-traffic-area', taskId,

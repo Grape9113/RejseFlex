@@ -7,7 +7,7 @@ function setup(search) {
   const dom = new JSDOM('<main id="app"></main>', { url: 'https://example.test/RejseFlex/' });
   const root = dom.window.document.querySelector('#app');
   const shown = [];
-  mountApp(root, { geocoder: { search }, map: { show: (points) => shown.push(points) } });
+  mountApp(root, { geocoder: { search }, map: { show: (points) => shown.push(points) }, journeyStore: { list: async () => [], save: async () => {} } });
   return { dom, root, shown };
 }
 
@@ -23,14 +23,14 @@ test('user searches and selects both addresses before planning', async () => {
   form.elements.to.value = 'Dock 1';
   assert.deepEqual(calls, []);
   for (const field of ['from', 'to']) {
-    root.querySelector(`[data-search="${field}"]`).click();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    form.elements[field].dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 350));
     root.querySelector(`[data-place-option="${field}"]`).click();
   }
   assert.deepEqual(calls, ['Søndersø', 'Dock 1']);
   assert.equal(shown.at(-1).length, 2);
-  assert.match(root.textContent, /aktuelle søgetekst.*ekstern/i);
-  form.elements.arrival.value = '2026-10-02T14:00';
+  assert.match(root.textContent, /Adressesøgning sendes til Photon, mens du skriver/i);
+  form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.match(root.querySelector('#result').textContent, /Søndersø, Nordfyn/);
@@ -41,12 +41,12 @@ test('no results and provider failure explain what happened without creating a j
   const { root } = setup(async () => { if (fail) throw new Error('network'); return []; });
   const field = root.querySelector('[name="from"]');
   field.value = 'Ukendt sted';
-  root.querySelector('[data-search="from"]').click();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.match(root.textContent, /Ingen adresser fundet/i);
+  field.dispatchEvent(new root.ownerDocument.defaultView.Event('input', { bubbles: true }));
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  assert.match(root.textContent, /Ingen steder fundet i Danmark/i);
   fail = true;
-  root.querySelector('[data-search="from"]').click();
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  field.dispatchEvent(new root.ownerDocument.defaultView.Event('input', { bubbles: true }));
+  await new Promise((resolve) => setTimeout(resolve, 350));
   assert.match(root.textContent, /Adresseopslag virker ikke lige nu/i);
   assert.equal(root.querySelector('#result').hidden, true);
 });

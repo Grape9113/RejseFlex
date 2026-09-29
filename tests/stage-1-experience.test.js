@@ -27,10 +27,10 @@ test('mobilbruger søger, vælger, registrerer tid, genberegner og genåbner den
   const form = root.querySelector('form');
   for (const field of ['from', 'to']) {
     form.elements[field].value = field === 'from' ? 'Start' : 'Slut';
-    root.querySelector(`[data-search="${field}"]`).click(); await tick();
+    form.elements[field].dispatchEvent(new dom.window.Event('input', { bubbles: true })); await new Promise((resolve) => setTimeout(resolve, 350));
     root.querySelector(`[data-place-option="${field}"]`).click();
   }
-  form.elements.arrival.value = '2026-10-02T14:00';
+  form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); await tick();
   assert.match(root.querySelector('#result').textContent, /DEMOREJSE.*Foreløbig rejseplan.*NÆSTE HANDLING/s);
   assert.equal(root.querySelectorAll('[data-journey-section]').length, 4);
@@ -57,10 +57,10 @@ test('alle fire demotrin kan registreres i rækkefølge', async () => {
   const form = root.querySelector('form');
   for (const field of ['from', 'to']) {
     form.elements[field].value = field === 'from' ? 'Start' : 'Slut';
-    root.querySelector(`[data-search="${field}"]`).click(); await tick();
+    form.elements[field].dispatchEvent(new dom.window.Event('input', { bubbles: true })); await new Promise((resolve) => setTimeout(resolve, 350));
     root.querySelector(`[data-place-option="${field}"]`).click();
   }
-  form.elements.arrival.value = '2026-10-02T14:00';
+  form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); await tick();
   root.querySelector('[data-select-plan]').click(); await tick();
   assert.equal(root.querySelector('[data-booking-time-outbound]'), null);

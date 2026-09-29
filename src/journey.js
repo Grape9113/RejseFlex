@@ -1,0 +1,221 @@
+// Public journey seam: a wish and replaceable sources yield one provisional demo plan.
+import { resolveHandicapTrip } from './handicap-booking.js';
+import { classifyTripGeography } from './handicap-geography.js';
+import { demoRules, demoTaskGuidance, demoConflictGuidance, evaluateRules } from './rules.js';
+export function createDemoTrainSource({ stationSource } = {}) {
+  return {
+    async findConnections(wish, { beforeArrival } = {}) {
+      const isDeparture = wish.timeMode === 'departure' && !beforeArrival;
+      const anchor = new Date(beforeArrival ?? (isDeparture ? wish.departure : wish.arrival)).getTime();
+      const trainDeparture = new Date(anchor + (isDeparture ? 90 : -180) * 60_000).toISOString();
+      const trainArrival = new Date(anchor + (isDeparture ? 180 : -90) * 60_000).toISOString();
+      const [fromStation, toStation] = stationSource ? await Promise.all([stationSource.nearby(wish.from.coordinates), stationSource.nearby(wish.to.coordinates)]) : [null, null];
+      return [{
+        id: 'illustrative-train',
+        fromStation: fromStation ?? { id: 'demo-start', name: 'Demostation ved start' },
+        toStation: toStation ?? { id: 'demo-end', name: 'Demostation ved destination' },
+        plannedDeparture: trainDeparture,
+        plannedArrival: trainArrival,
+        disruption: { kind: 'unknown' },
+      }];
+    },
+  };
+}
+
+function trainIdentity(train) {
+  return {
+    id: train.id, fromStationId: train.fromStation.id, toStationId: train.toStation.id,
+    plannedDeparture: train.plannedDeparture, plannedArrival: train.plannedArrival,
+  };
+}
+function sameTrain(a, b) {
+  return a && b && Object.keys(a).every((key) => a[key] === b[key]);
+}
+
+function bookingAction(plan) {
+  const conflict = plan.conflicts?.[0];
+  if (conflict) return { ...(demoConflictGuidance[conflict.code] ?? {
+    taskId: conflict.taskIds[0], title: 'Kontrollér rejseplanen', explanation: conflict.explanation,
+  }), mode: 'demo' };
+  const next = plan.tasks.find((task) => !['bestilt', 'færdig'].includes(task.status) &&
+    task.dependsOn.every((id) => {
+      const dependency = plan.tasks.find((item) => item.id === id);
+      return dependency?.confirmed || dependency?.status === 'færdig';
+    }));
+  if (!next) return { taskId: 'outbound', title: 'Bookingforløbet er registreret', explanation: 'Alle demotrins eksterne aftaler er registreret. Kontrollér fortsat de ukendte forhold før en virkelig rejse.', mode: 'demo' };
+  const guidance = demoTaskGuidance[next.id];
+  const leg = plan.legs.find((item) => item.id === next.id);
+  const instruction = leg?.handicapTrip?.booking;
+  if (instruction && !next.actualBookingTime) {
+    const titles = { BOOK_DIGITALLY: 'Bestil handicapkørsel digitalt', CALL_HOME_PROVIDER: 'Ring til dit trafikselskab', CALL_FOR_CROSS_REGION_BOOKING: 'Ring om den samlede rejse', MANUAL_BOOKING_REQUIRED: 'Kontrollér bookingmåden' };
+    return { taskId: next.id, title: `${titles[instruction.actionType]} for ${next.id === 'inbound' ? 'sidste' : 'første'} handicapkørsel`, explanation: instruction.actionType === 'MANUAL_BOOKING_REQUIRED' ? `${next.id === 'inbound' ? 'Toget afhænger af den faktiske afhentningstid. ' : ''}Geografien eller bookingreglen er ikke sikkert fastlagt. Kontakt dit valgte trafikselskab før du bestiller.` : `Bestil hos ${leg.handicapTrip.provider}. ${instruction.discountEligible ? 'Digital bestilling giver 20 % rabat på prisoverslaget. ' : ''}Registrér den faktiske afhentningstid bagefter.`, actionType: instruction.actionType, bookingUrl: instruction.source, mode: 'handicap-booking' };
+  }
+  const pending = next.actualBookingTime && !next.confirmed ? guidance.pending : null;
+  const blocking = plan.uncertainties?.find((item) => item.taskId === next.id && item.code !== 'unknown-price');
+  const orderRule = plan.appliedRules?.find((item) => item.effect?.firstTaskId === next.id);
+  return { taskId: next.id, title: pending?.title ?? guidance.title,
+    explanation: pending?.explanation ?? [orderRule?.explanation, blocking?.explanation, guidance.explanation].filter(Boolean).join(' '), mode: 'demo' };
+}
+
+function refreshTaskReadiness(plan) {
+  for (const task of plan.tasks) {
+    if (['bestilt', 'færdig', 'afventer brugerinput'].includes(task.status)) continue;
+    if (task.id === 'inbound') continue;
+    const ready = task.dependsOn.every((id) => {
+      const dependency = plan.tasks.find((item) => item.id === id);
+      return dependency?.confirmed || dependency?.status === 'færdig';
+    });
+    task.status = ready ? 'klar til booking' : 'ikke klar';
+  }
+}
+
+export async function recordBookingTime(plan, taskId, time, { trainSource = createDemoTrainSource() } = {}) {
+  if (!['inbound', 'outbound'].includes(taskId)) throw new Error('Kun handicapkørsel kan tidsregistreres.');
+  if (!Number.isFinite(Date.parse(time))) throw new Error('Angiv en gyldig afhentningstid.');
+  const task = plan.tasks.find((item) => item.id === taskId);
+  if (task?.status === 'bestilt') throw new Error('En bekræftet aftale kan ikke ændres automatisk.');
+  if (taskId === 'outbound' && !['klar til booking', 'afventer brugerinput'].includes(task?.status)) throw new Error('Afslut tidligere trin før første handicapkørsel registreres.');
+  const updated = structuredClone(plan);
+  const inbound = updated.tasks.find((item) => item.id === taskId);
+  inbound.actualBookingTime = time;
+  inbound.status = 'afventer brugerinput';
+  updated.legs.find((leg) => leg.id === taskId).actualBookingTime = time;
+  if (taskId === 'outbound') {
+    updated.nextAction = bookingAction(updated);
+    return updated;
+  }
+  await replanOpenTrain(updated, time, trainSource);
+  refreshTaskReadiness(updated);
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
+async function replanOpenTrain(updated, pickupTime, trainSource) {
+  const connections = await trainSource.findConnections(updated.wish, { beforeArrival: pickupTime });
+  const candidate = [...connections].filter((connection) => Date.parse(connection.plannedArrival) <= Date.parse(pickupTime))
+    .sort((a, b) => Date.parse(b.plannedArrival) - Date.parse(a.plannedArrival))[0];
+  updated.uncertainties = updated.uncertainties.filter((item) => item.code !== 'unknown-transfer-buffer');
+  updated.uncertainties.push({ code: 'unknown-transfer-buffer', taskId: 'train',
+    explanation: 'Nødvendig overgangstid mellem togankomst og afhentning er ukendt. Kontrollér den med trafikselskabet.' });
+  updated.conflicts = [];
+  updated.feasibility = 'foreløbig';
+  if (candidate) {
+    const previousTrain = updated.legs[1];
+    if (previousTrain.fromStation.id !== candidate.fromStation.id || previousTrain.toStation.id !== candidate.toStation.id) {
+      updated.feasibility = 'konflikt';
+      updated.conflicts.push({ code: 'train-station-changed', taskIds: ['train', 'inbound', 'outbound'], explanation: 'Togforslaget bruger andre stationer end handicapkørselsbenene. Kontrollér begge bookinger og priser; de ændres ikke automatisk.' });
+    }
+    updated.legs[1] = { id: 'train', kind: 'tog', ...candidate };
+    const assistance = updated.tasks.find((item) => item.id === 'assistance');
+    if (assistance.confirmed && !sameTrain(assistance.trainIdentity, trainIdentity(candidate))) {
+      updated.feasibility = 'konflikt';
+      updated.conflicts.push({ code: 'assistance-train-changed', taskIds: ['train', 'assistance'],
+        explanation: 'Handicapservice er bekræftet til et andet tog. Kontrollér den eksterne aftale hos DSB. RejseFlex ændrer den ikke.' });
+    } else if (!assistance.confirmed) {
+      assistance.trainId = candidate.id;
+      assistance.trainIdentity = trainIdentity(candidate);
+      assistance.stationIds = [candidate.fromStation.id, candidate.toStation.id];
+    }
+    updated.tasks.find((item) => item.id === 'train').status = 'ikke klar';
+  } else {
+    updated.feasibility = 'konflikt';
+    updated.tasks.find((item) => item.id === 'train').status = 'kræver genberegning';
+    updated.conflicts.push({ code: 'no-train-before-pickup', taskIds: ['train', 'inbound'],
+      explanation: 'Ingen demoforbindelse ankommer før den oplyste afhentning. Kontakt trafikselskabet om ændring, eller kontrollér andre tog.' });
+  }
+}
+
+export async function refreshTrainSuggestion(plan, { trainSource = createDemoTrainSource() } = {}) {
+  const pickupTime = plan.tasks.find((task) => task.id === 'inbound')?.actualBookingTime;
+  if (!pickupTime) throw new Error('Registrér sidste handicapkørsel først.');
+  const updated = structuredClone(plan);
+  await replanOpenTrain(updated, pickupTime, trainSource);
+  refreshTaskReadiness(updated);
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
+export function confirmBooking(plan, taskId) {
+  if (!['inbound', 'outbound'].includes(taskId)) throw new Error('Kun handicapkørsel kan bekræftes.');
+  const updated = structuredClone(plan);
+  const task = updated.tasks.find((item) => item.id === taskId);
+  if (taskId === 'outbound' && task?.status !== 'afventer brugerinput') throw new Error('Afslut tidligere trin før første handicapkørsel bekræftes.');
+  if (!task?.actualBookingTime) throw new Error('Registrér den oplyste afhentningstid først.');
+  task.status = 'bestilt';
+  task.confirmed = true;
+  refreshTaskReadiness(updated);
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
+export function confirmAssistance(plan) {
+  const updated = structuredClone(plan);
+  const assistance = updated.tasks.find((task) => task.id === 'assistance');
+  if (updated.conflicts?.length || !assistance?.trainId || assistance.status !== 'klar til booking') throw new Error('Kontrollér togforslaget før Handicapservice kan bekræftes.');
+  assistance.status = 'bestilt';
+  assistance.confirmed = true;
+  refreshTaskReadiness(updated);
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
+export function confirmTrainChoice(plan) {
+  const updated = structuredClone(plan);
+  const task = updated.tasks.find((item) => item.id === 'train');
+  if (task?.status !== 'klar til booking' || updated.conflicts?.length) throw new Error('Togforslaget kan først kontrolleres efter sidste handicapkørsel og uden konflikt.');
+  task.status = 'færdig';
+  refreshTaskReadiness(updated);
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
+export async function proposeJourney(wish, { trainSource = createDemoTrainSource(), rules = demoRules,
+  trafficAreaSource = { classify: async () => ({ kind: 'unknown' }) }, roadDistanceSource, handicapProvider = null } = {}) {
+  const [train] = await trainSource.findConnections(wish);
+  if (!train) return { kind: 'no-train', message: 'Demotogkilden fandt ingen forbindelse. Prøv et andet tidspunkt.' };
+  const [fromArea, toArea] = await Promise.all([
+    trafficAreaSource.classify(wish.from.coordinates), trafficAreaSource.classify(wish.to.coordinates),
+  ]);
+  const [fromStationArea, toStationArea] = await Promise.all([
+    trafficAreaSource.classify(train.fromStation.coordinates), trafficAreaSource.classify(train.toStation.coordinates),
+  ]);
+  const journeyContext = fromArea.kind === 'known' && toArea.kind === 'known' && fromArea.region && toArea.region
+    ? (fromArea.region !== toArea.region ? 'NATIONAL_TRAIN_COMBINATION' : 'LOCAL') : 'UNKNOWN';
+  const evaluated = evaluateRules(rules, { onDate: (wish.timeMode === 'departure' ? wish.departure : wish.arrival).slice(0, 10), areaId: toArea.areaId });
+  const uncertainties = [...evaluated.uncertainties];
+  const makeLeg = async (id, from, to, originArea, destinationArea) => {
+    const tripGeography = classifyTripGeography(originArea, destinationArea, handicapProvider);
+    const distanceKm = roadDistanceSource ? await roadDistanceSource.distanceKm(from.coordinates, to.coordinates) : null;
+    const handicapTrip = handicapProvider
+      ? resolveHandicapTrip({ provider: handicapProvider, distanceKm, tripGeography, journeyContext }) : null;
+    if (!handicapProvider) uncertainties.push({ code: 'missing-handicap-provider', taskId: id, explanation: 'Vælg dit visiterende trafikselskab for at få pris og bookingvejledning.' });
+    if (distanceKm === null) uncertainties.push({ code: 'unknown-price', taskId: id, explanation: 'Vejafstand kunne ikke beregnes. Kontrollér pris hos dit trafikselskab.' });
+    if (tripGeography.kind === 'UNKNOWN') uncertainties.push({ code: 'unknown-traffic-area', taskId: id, explanation: 'Turens geografi kunne ikke fastlægges. Kontrollér bookingmåden hos dit trafikselskab.' });
+    return { id, kind: 'handicapkørsel', from, to, plannedTime: null,
+      bookingChannel: handicapTrip ? { kind: 'known', ...handicapTrip.booking } : { kind: 'unknown' },
+      operator: handicapProvider ?? { kind: 'unknown' },
+      priceEstimate: handicapTrip?.fare ? { kind: 'known', ...handicapTrip.fare } : { kind: 'unknown' },
+      handicapTrip, tripGeography, distanceKm };
+  };
+  const [firstLeg, lastLeg] = await Promise.all([
+    makeLeg('outbound', wish.from, train.fromStation, fromArea, fromStationArea),
+    makeLeg('inbound', train.toStation, wish.to, toStationArea, toArea),
+  ]);
+  const trainLeg = { id: 'train', kind: 'tog', ...train };
+  const orderRule = evaluated.applied.find((item) => item.effect?.firstTaskId === 'inbound');
+  const tasks = [
+    { id: 'inbound', kind: 'handicapkørsel', status: orderRule && (lastLeg.handicapTrip || toArea.kind === 'known') ? 'klar til booking' : 'afventer brugerinput', dependsOn: [] },
+    { id: 'train', kind: 'togvalg', status: 'ikke klar', dependsOn: ['inbound'] },
+    { id: 'assistance', kind: 'Handicapservice', status: 'ikke klar', dependsOn: ['train'], trainId: train.id,
+      stationIds: [train.fromStation.id, train.toStation.id], trainIdentity: trainIdentity(train), bookingDeadline: { kind: 'unknown' },
+      meetingTime: { kind: 'unknown' }, tips: [] },
+    { id: 'outbound', kind: 'handicapkørsel', status: 'ikke klar', dependsOn: ['assistance'] },
+  ];
+  const plan = {
+    kind: 'journey', origin: 'demo', feasibility: 'foreløbig', selected: false,
+    wish, legs: [firstLeg, trainLeg, lastLeg], tasks, uncertainties, appliedRules: evaluated.applied,
+    nextAction: null,
+  };
+  plan.nextAction = bookingAction(plan);
+  return plan;
+}

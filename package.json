@@ -1,0 +1,22 @@
+{
+  "name": "rejseflex",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test",
+    "verify:deploy": "npm run build && node scripts/verify-public-build.js"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.22",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^26.1.0",
+    "vite": "^7.1.0"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  }
+}

@@ -38,7 +38,7 @@ test('selected journey accepts time and separate confirmation, then persists upd
   const root = dom.window.document.querySelector('#app');
   mountApp(root, { journeyStore: store, trainSource: source });
   const form = root.querySelector('form');
-  form.elements.from.value = 'Søndersø'; form.elements.to.value = 'Dock 1'; form.elements.arrival.value = '2026-10-02T14:00';
+  form.elements.from.value = 'Søndersø'; form.elements.to.value = 'Dock 1'; form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await tick(); root.querySelector('[data-select-plan]').click(); await tick();
   assert.ok(root.querySelector('[data-booking-time]'));

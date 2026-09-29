@@ -1,25 +1,41 @@
-// Replace this adapter when a production geocoding provider is selected.
-// Public Nominatim is used only for deliberate, user-triggered searches.
-const endpoint = 'https://nominatim.openstreetmap.org/search';
-let lastRequest = 0;
+// Replaceable address-search adapter. Photon permits low-traffic search-as-you-type.
+const endpoint = 'https://photon.komoot.io/api';
+
+function placeFromFeature(feature) {
+  const p = feature?.properties ?? {};
+  const [longitude, latitude] = feature?.geometry?.coordinates ?? [];
+  if (String(p.countrycode).toUpperCase() !== 'DK' ||
+      !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+      Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+  const street = [p.street, p.housenumber].filter(Boolean).join(' ');
+  const town = [p.postcode, p.city ?? p.town ?? p.village].filter(Boolean).join(' ');
+  const address = [street, town].filter(Boolean).join(', ');
+  const name = p.name?.trim();
+  const primary = name || street || town;
+  if (!primary) return null;
+  const secondary = name ? address : street && town ? town : '';
+  const label = name && address ? `${name}, ${address}` : name || address || primary;
+  return {
+    id: `${p.osm_type ?? 'place'}-${p.osm_id ?? `${latitude}-${longitude}`}`,
+    label, primary, secondary,
+    coordinates: { latitude, longitude },
+  };
+}
 
 export const geocoder = {
-  async search(query) {
-    const pause = Math.max(0, 1100 - (Date.now() - lastRequest));
-    if (pause) await new Promise((resolve) => setTimeout(resolve, pause));
-    lastRequest = Date.now();
+  async search(query, { signal } = {}) {
     const url = new URL(endpoint);
-    url.searchParams.set('q', query);
-    url.searchParams.set('format', 'jsonv2');
-    url.searchParams.set('addressdetails', '1');
+    url.searchParams.set('q', query.trim());
+    url.searchParams.set('countrycode', 'DK');
     url.searchParams.set('limit', '5');
-    url.searchParams.set('accept-language', 'da');
-    const response = await fetch(url);
+    const response = await fetch(url, { signal });
     if (!response.ok) throw new Error(`Geocoding failed: ${response.status}`);
-    return (await response.json()).map((place) => ({
-      id: `${place.osm_type}-${place.osm_id}`,
-      label: place.display_name,
-      coordinates: { latitude: Number(place.lat), longitude: Number(place.lon) },
-    }));
+    const data = await response.json();
+    const seen = new Set();
+    return (data.features ?? []).map(placeFromFeature).filter((place) => {
+      if (!place || seen.has(place.label)) return false;
+      seen.add(place.label);
+      return true;
+    });
   },
 };

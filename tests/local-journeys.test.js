@@ -14,7 +14,7 @@ async function search(root) {
   const form = root.querySelector('form');
   form.elements.from.value = 'Søndersø';
   form.elements.to.value = 'Dock 1, Aarhus';
-  form.elements.arrival.value = '2026-10-02T14:00';
+  form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
   form.dispatchEvent(new root.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }));
   await tick();
 }

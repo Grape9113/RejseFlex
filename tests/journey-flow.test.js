@@ -13,7 +13,7 @@ test('from journey wish to a clearly marked demo journey', async () => {
   assert.match(root.textContent, /demo/i);
   form.elements.from.value = 'Søndersø';
   form.elements.to.value = 'Dock 1, Aarhus';
-  form.elements.arrival.value = '2026-10-02T14:00';
+  form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));
 

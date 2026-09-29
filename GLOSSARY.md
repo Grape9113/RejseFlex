@@ -31,5 +31,8 @@ En ekstern bestilling, som brugeren har markeret som gennemført. Dens registrer
 **Ønsket ankomsttid**:
 Det seneste tidspunkt, hvor brugeren ønsker at være fremme på destinationsadressen efter hele rejsekæden.
 
+**Ønsket afgangstid**:
+Det tidspunkt, hvor brugeren ønsker at begynde rejsen fra startadressen. Et togforslag beregnet ud fra dette tidspunkt er fortsat foreløbigt, indtil handicapkørsel og nødvendige buffere er kontrolleret.
+
 **Trafikområde**:
 Det geografiske område, som bruges til at finde det relevante trafikselskab og dets regler for et handicapkørselsben.

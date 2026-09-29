@@ -39,11 +39,12 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
     element(document, 'strong', '', placeName(wish.to)),
   );
   result.append(summary);
-  const arrival = new Date(wish.arrival);
+  const isDeparture = wish.timeMode === 'departure';
+  const requestedTime = new Date(isDeparture ? wish.departure : wish.arrival);
   const dateText = new Intl.DateTimeFormat('da-DK', {
     dateStyle: 'long', timeStyle: 'short',
-  }).format(arrival);
-  result.append(element(document, 'p', 'arrival-note', `Ønsket ankomst på destinationsadressen: ${dateText}`));
+  }).format(requestedTime);
+  result.append(element(document, 'p', 'arrival-note', `${isDeparture ? 'Ønsket afgang fra startadressen' : 'Ønsket ankomst på destinationsadressen'}: ${dateText}`));
   result.append(element(document, 'p', 'provisional-note', 'Foreløbig rejseplan: Nødvendige oplysninger skal kontrolleres. DEMO: Togtiderne er illustrative. Brug ikke planen til en virkelig rejse.'));
   const uncertainties = element(document, 'section', 'journey-uncertainties');
   uncertainties.dataset.uncertainties = '';
@@ -69,7 +70,7 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
   const action = element(document, 'section', 'next-action');
   action.dataset.nextAction = '';
   action.append(element(document, 'span', 'eyebrow', 'NÆSTE HANDLING · DEMO'), element(document, 'h3', '', plan.nextAction.title), element(document, 'p', '', plan.nextAction.explanation));
-  result.append(action);
+  result.insertBefore(action, uncertainties);
 
   const cards = element(document, 'div', 'journey-cards');
   const [first, train, last] = plan.legs;
@@ -91,7 +92,7 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
     );
     cards.append(card);
   }
-  result.append(cards);
+  result.insertBefore(cards, uncertainties);
   if (!plan.selected) {
     const choose = element(document, 'button', 'select-plan', 'Vælg denne demorejse');
     choose.type = 'button';
@@ -154,6 +155,6 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
     result.append(assistanceSection);
   }
   result.append(element(document, 'p', 'booking-note', 'RejseFlex bestiller ikke handicapkørsel, Handicapservice eller billetter.'));
-  result.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+
 }
 

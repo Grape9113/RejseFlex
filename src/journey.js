@@ -2,8 +2,8 @@
 import { demoRules, evaluateRules } from './rules.js';
 export function createDemoTrainSource() {
   return {
-    async findConnections(wish) {
-      const arrival = new Date(wish.arrival).getTime();
+    async findConnections(wish, { beforeArrival } = {}) {
+      const arrival = new Date(beforeArrival ?? wish.arrival).getTime();
       const trainArrival = new Date(arrival - 90 * 60_000).toISOString();
       const trainDeparture = new Date(arrival - 180 * 60_000).toISOString();
       return [{
@@ -16,6 +16,65 @@ export function createDemoTrainSource() {
       }];
     },
   };
+}
+
+function bookingAction(plan) {
+  const inbound = plan.tasks.find((task) => task.id === 'inbound');
+  if (plan.conflicts?.length) return {
+    taskId: 'inbound', title: 'Tiderne passer ikke sammen',
+    explanation: 'Det valgte tog kan ikke nå den oplyste afhentning. Kontakt trafikselskabet for at ændre aftalen eller find et andet tog. Bekræftede aftaler ændres ikke i appen.', mode: 'demo',
+  };
+  if (inbound?.actualBookingTime && inbound.status !== 'bestilt') return {
+    taskId: 'inbound', title: 'Bekræft den eksterne bestilling',
+    explanation: 'Afhentningstiden er registreret, men bestillingen er ikke bekræftet. Bekræft kun, hvis du har gennemført den hos trafikselskabet.', mode: 'demo',
+  };
+  if (inbound?.status === 'bestilt') return {
+    taskId: 'train', title: 'Kontrollér togforslaget',
+    explanation: 'Sidste handicapkørsel er bekræftet. Togforslaget er genberegnet, men nødvendig overgangsbuffer er ukendt og skal kontrolleres før bestilling.', mode: 'demo',
+  };
+  return plan.nextAction;
+}
+
+export async function recordBookingTime(plan, taskId, time, { trainSource = createDemoTrainSource() } = {}) {
+  if (taskId !== 'inbound') throw new Error('Kun sidste handicapkørsel kan tidsregistreres i denne demo.');
+  if (!Number.isFinite(Date.parse(time))) throw new Error('Angiv en gyldig afhentningstid.');
+  const task = plan.tasks.find((item) => item.id === taskId);
+  if (task?.status === 'bestilt') throw new Error('En bekræftet aftale kan ikke ændres automatisk.');
+  const updated = structuredClone(plan);
+  const inbound = updated.tasks.find((item) => item.id === taskId);
+  inbound.actualBookingTime = time;
+  inbound.status = 'afventer brugerinput';
+  updated.legs.find((leg) => leg.id === taskId).actualBookingTime = time;
+  const connections = await trainSource.findConnections(updated.wish, { beforeArrival: time });
+  const candidate = [...connections].filter((connection) => Date.parse(connection.plannedArrival) <= Date.parse(time))
+    .sort((a, b) => Date.parse(b.plannedArrival) - Date.parse(a.plannedArrival))[0];
+  updated.uncertainties = updated.uncertainties.filter((item) => item.code !== 'unknown-transfer-buffer');
+  updated.uncertainties.push({ code: 'unknown-transfer-buffer', taskId: 'train',
+    explanation: 'Nødvendig overgangstid mellem togankomst og afhentning er ukendt. Kontrollér den med trafikselskabet.' });
+  updated.conflicts = [];
+  if (candidate) {
+    updated.legs[1] = { id: 'train', kind: 'tog', ...candidate };
+    updated.tasks.find((item) => item.id === 'assistance').trainId = candidate.id;
+    updated.tasks.find((item) => item.id === 'train').status = 'afventer brugerinput';
+  } else {
+    updated.feasibility = 'konflikt';
+    updated.tasks.find((item) => item.id === 'train').status = 'kræver genberegning';
+    updated.conflicts.push({ code: 'no-train-before-pickup', taskIds: ['train', 'inbound'],
+      explanation: 'Ingen demoforbindelse ankommer før den oplyste afhentning. Kontakt trafikselskabet om ændring, eller kontrollér andre tog.' });
+  }
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
+export function confirmBooking(plan, taskId) {
+  if (taskId !== 'inbound') throw new Error('Kun sidste handicapkørsel kan bekræftes i denne demo.');
+  const updated = structuredClone(plan);
+  const task = updated.tasks.find((item) => item.id === taskId);
+  if (!task?.actualBookingTime) throw new Error('Registrér den oplyste afhentningstid først.');
+  task.status = 'bestilt';
+  task.confirmed = true;
+  updated.nextAction = bookingAction(updated);
+  return updated;
 }
 
 export async function proposeJourney(wish, { trainSource = createDemoTrainSource(), rules = demoRules,

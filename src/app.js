@@ -1,4 +1,4 @@
-import { proposeJourney } from './journey.js';
+import { proposeJourney, recordBookingTime, confirmBooking } from './journey.js';
 import { createJourneyStore } from './journey-store.js';
 
 function demoTime(value) {
@@ -15,7 +15,7 @@ function element(document, tag, className, text) {
   return node;
 }
 
-function renderJourney(root, plan, onSelect) {
+function renderJourney(root, plan, onSelect, onUpdate) {
   const { wish } = plan;
   const document = root.ownerDocument;
   const result = root.querySelector('#result');
@@ -51,6 +51,13 @@ function renderJourney(root, plan, onSelect) {
     uncertainties.append(element(document, 'p', '', uncertainty.explanation));
   }
   result.append(uncertainties);
+  if (plan.conflicts?.length) {
+    const conflicts = element(document, 'section', 'journey-conflicts');
+    conflicts.dataset.conflicts = '';
+    conflicts.append(element(document, 'h3', '', 'Tiderne passer ikke sammen'));
+    for (const conflict of plan.conflicts) conflicts.append(element(document, 'p', '', `${conflict.explanation} Berørte trin: ${conflict.taskIds.join(', ')}.`));
+    result.append(conflicts);
+  }
   const ruleNotes = element(document, 'section', 'journey-rules');
   ruleNotes.dataset.appliedRules = '';
   for (const rule of plan.appliedRules ?? []) {
@@ -91,6 +98,29 @@ function renderJourney(root, plan, onSelect) {
     result.append(choose);
   } else {
     result.append(element(document, 'p', 'selection-note', 'Demorejse valgt og gemt på denne enhed.'));
+    const booking = element(document, 'section', 'booking-entry');
+    const inbound = plan.tasks.find((task) => task.id === 'inbound');
+    booking.append(element(document, 'h3', '', 'Sidste handicapkørsel'));
+    if (inbound.status === 'bestilt') {
+      booking.append(element(document, 'p', '', `Bekræftet ekstern bestilling. Oplyst afhentning: ${demoTime(inbound.actualBookingTime)}. Aftalen ændres ikke automatisk.`));
+    } else {
+      const label = element(document, 'label', '', 'Faktisk oplyst afhentningstid');
+      const input = element(document, 'input');
+      input.type = 'datetime-local'; input.dataset.bookingTime = '';
+      input.value = inbound.actualBookingTime?.slice(0, 16) ?? '';
+      label.append(input); booking.append(label);
+      const record = element(document, 'button', '', 'Registrér oplyst tid');
+      record.type = 'button'; record.dataset.recordTime = '';
+      record.addEventListener('click', () => { if (input.value) void onUpdate(plan, 'time', input.value); });
+      booking.append(record);
+      if (inbound.actualBookingTime) {
+        const confirm = element(document, 'button', '', 'Bekræft ekstern bestilling');
+        confirm.type = 'button'; confirm.dataset.confirmBooking = '';
+        confirm.addEventListener('click', () => void onUpdate(plan, 'confirm'));
+        booking.append(confirm);
+      }
+    }
+    result.append(booking);
   }
   result.append(element(document, 'p', 'booking-note', 'RejseFlex bestiller ikke handicapkørsel, Handicapservice eller billetter.'));
   result.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
@@ -153,7 +183,7 @@ export function mountApp(root, { geocoder, map, trainSource, journeyStore = crea
         const button = element(document, 'button', '', `${placeName(plan.wish.from)} → ${placeName(plan.wish.to)}`);
         button.type = 'button';
         button.dataset.openPlan = '';
-        button.addEventListener('click', () => renderJourney(root, plan, saveSelected));
+        button.addEventListener('click', () => renderJourney(root, plan, saveSelected, updateBooking));
         savedSection.append(button);
       }
     } catch { showStorageError(); }
@@ -162,9 +192,21 @@ export function mountApp(root, { geocoder, map, trainSource, journeyStore = crea
     const selectedPlan = { ...plan, id: plan.id ?? globalThis.crypto?.randomUUID?.() ?? `journey-${Date.now()}-${Math.random()}`, selected: true, documentReferences: plan.documentReferences ?? [] };
     try {
       await journeyStore.save(selectedPlan);
-      renderJourney(root, selectedPlan, saveSelected);
+      renderJourney(root, selectedPlan, saveSelected, updateBooking);
       await showSavedJourneys();
     } catch { showStorageError(); }
+  }
+  async function updateBooking(plan, action, value) {
+    try {
+      const updated = action === 'time'
+        ? await recordBookingTime(plan, 'inbound', value, { trainSource })
+        : confirmBooking(plan, 'inbound');
+      await journeyStore.save(updated);
+      renderJourney(root, updated, saveSelected, updateBooking);
+      await showSavedJourneys();
+    } catch (error) {
+      savedSection.textContent = error.message?.includes('lagring') ? error.message : `Ændringen kunne ikke gemmes. ${error.message ?? 'Prøv igen.'}`;
+    }
   }
   void showSavedJourneys();
   for (const field of ['from', 'to']) {
@@ -228,7 +270,7 @@ export function mountApp(root, { geocoder, map, trainSource, journeyStore = crea
         const result = root.querySelector('#result');
         result.hidden = false;
         result.textContent = plan.message;
-      } else renderJourney(root, plan, saveSelected);
+      } else renderJourney(root, plan, saveSelected, updateBooking);
     } catch {
       const result = root.querySelector('#result');
       result.hidden = false;

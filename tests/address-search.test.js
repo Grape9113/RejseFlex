@@ -50,3 +50,12 @@ test('no results and provider failure explain what happened without creating a j
   assert.match(root.textContent, /Adresseopslag virker ikke lige nu/i);
   assert.equal(root.querySelector('#result').hidden, true);
 });
+
+
+test('map initialises after its container is rendered', () => {
+  const dom = new JSDOM('<main id="app"></main>');
+  const root = dom.window.document.querySelector('#app');
+  let container;
+  mountApp(root, { mapFactory: (node) => { container = node; return { show() {} }; } });
+  assert.equal(container, root.querySelector('#address-map'));
+});

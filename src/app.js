@@ -1,4 +1,4 @@
-import { proposeJourney, recordBookingTime, confirmBooking, confirmAssistance } from './journey.js';
+import { proposeJourney, recordBookingTime, confirmBooking, confirmAssistance, confirmTrainChoice } from './journey.js';
 import { createJourneyStore } from './journey-store.js';
 
 function demoTime(value) {
@@ -103,48 +103,64 @@ function renderJourney(root, plan, onSelect, onUpdate) {
     result.append(choose);
   } else {
     result.append(element(document, 'p', 'selection-note', 'Demorejse valgt og gemt på denne enhed.'));
-    const booking = element(document, 'section', 'booking-entry');
-    const inbound = plan.tasks.find((task) => task.id === 'inbound');
-    booking.append(element(document, 'h3', '', 'Sidste handicapkørsel'));
-    if (inbound.status === 'bestilt') {
-      booking.append(element(document, 'p', '', `Bekræftet ekstern bestilling. Oplyst afhentning: ${demoTime(inbound.actualBookingTime)}. Aftalen ændres ikke automatisk.`));
-    } else {
-      const label = element(document, 'label', '', 'Faktisk oplyst afhentningstid');
-      const input = element(document, 'input');
-      input.type = 'datetime-local'; input.dataset.bookingTime = '';
-      input.value = inbound.actualBookingTime?.slice(0, 16) ?? '';
-      label.append(input); booking.append(label);
-      const record = element(document, 'button', '', 'Registrér oplyst tid');
-      record.type = 'button'; record.dataset.recordTime = '';
-      record.addEventListener('click', () => { if (input.value) void onUpdate(plan, 'time', input.value); });
-      booking.append(record);
-      if (inbound.actualBookingTime) {
-        const confirm = element(document, 'button', '', 'Bekræft ekstern bestilling');
-        confirm.type = 'button'; confirm.dataset.confirmBooking = '';
-        confirm.addEventListener('click', () => void onUpdate(plan, 'confirm'));
-        booking.append(confirm);
+    for (const [taskId, title, timeLabel, dataSuffix] of [
+      ['inbound', 'Sidste handicapkørsel', 'Faktisk oplyst afhentningstid', ''],
+      ['outbound', 'Første handicapkørsel', 'Faktisk oplyst afhentningstid', 'Outbound'],
+    ]) {
+      const task = plan.tasks.find((item) => item.id === taskId);
+      const booking = element(document, 'section', 'booking-entry');
+      booking.append(element(document, 'h3', '', title));
+      if (task.confirmed) booking.append(element(document, 'p', '', `Bekræftet ekstern bestilling. Oplyst afhentning: ${demoTime(task.actualBookingTime)}. Aftalen ændres ikke automatisk.`));
+      else if (task.status === 'ikke klar') booking.append(element(document, 'p', '', 'Afventer tidligere trin i bookingforløbet.'));
+      else {
+        const label = element(document, 'label', '', timeLabel);
+        const input = element(document, 'input');
+        input.type = 'datetime-local'; input.dataset[`bookingTime${dataSuffix}`] = '';
+        input.value = task.actualBookingTime?.slice(0, 16) ?? '';
+        label.append(input); booking.append(label);
+        const record = element(document, 'button', '', 'Registrér oplyst tid');
+        record.type = 'button'; record.dataset[`recordTime${dataSuffix}`] = '';
+        record.addEventListener('click', () => { if (input.value) void onUpdate(plan, 'time', input.value, taskId); });
+        booking.append(record);
+        if (task.actualBookingTime) {
+          const confirm = element(document, 'button', '', 'Bekræft ekstern bestilling');
+          confirm.type = 'button'; confirm.dataset[`confirmBooking${dataSuffix}`] = '';
+          confirm.addEventListener('click', () => void onUpdate(plan, 'confirm', undefined, taskId));
+          booking.append(confirm);
+        }
       }
+      result.append(booking);
     }
-    result.append(booking);
+    const trainTask = plan.tasks.find((task) => task.id === 'train');
+    const trainSection = element(document, 'section', 'booking-entry');
+    trainSection.append(element(document, 'h3', '', 'Togforslag'));
+    if (trainTask.status === 'klar til booking') {
+      const confirm = element(document, 'button', '', 'Markér togforslaget som kontrolleret');
+      confirm.type = 'button'; confirm.dataset.confirmTrain = '';
+      confirm.addEventListener('click', () => void onUpdate(plan, 'confirm-train'));
+      trainSection.append(confirm);
+    } else trainSection.append(element(document, 'p', '', trainTask.status === 'færdig' ? 'Togforslaget er markeret som kontrolleret. DEMO-tider skal stadig kontrolleres eksternt.' : 'Afventer sidste handicapkørsel.'));
+    result.append(trainSection);
     const assistanceSection = element(document, 'section', 'booking-entry');
     assistanceSection.dataset.assistanceTask = '';
     assistanceSection.append(element(document, 'h3', '', 'Handicapservice'));
-    assistanceSection.append(element(document, 'p', '', `Tog ${assistance.trainId}; stationer ${assistance.stationIds?.join(' → ') ?? 'ukendt'}. Frist: ${assistanceFact(assistance.bookingDeadline)}. Mødetid: ${assistanceFact(assistance.meetingTime)}.`));
+    const confirmedTrain = assistance.trainIdentity;
+    assistanceSection.append(element(document, 'p', '', `Tog ${assistance.trainId}; stationer ${assistance.stationIds?.join(' → ') ?? 'ukendt'}. Afgang: ${confirmedTrain ? demoTime(confirmedTrain.plannedDeparture) : 'ukendt'}; ankomst: ${confirmedTrain ? demoTime(confirmedTrain.plannedArrival) : 'ukendt'}. Frist: ${assistanceFact(assistance.bookingDeadline)}. Mødetid: ${assistanceFact(assistance.meetingTime)}.`));
     for (const tip of assistance.tips ?? []) assistanceSection.append(element(document, 'p', '', `${tip.text} Kilde: ${tip.source ?? 'ukendt'}. Sidst verificeret: ${tip.lastVerified ?? 'ukendt'}.`));
     if (assistance.confirmed) assistanceSection.append(element(document, 'p', '', 'Bekræftet ekstern Handicapservice-bestilling. Aftalen ændres ikke automatisk.'));
-    else {
+    else if (assistance.status === 'klar til booking') {
       const confirm = element(document, 'button', '', 'Bekræft ekstern Handicapservice-bestilling');
       confirm.type = 'button'; confirm.dataset.confirmAssistance = '';
       confirm.addEventListener('click', () => void onUpdate(plan, 'confirm-assistance'));
       assistanceSection.append(confirm);
-    }
+    } else assistanceSection.append(element(document, 'p', '', 'Afventer kontrolleret togforslag.'));
     result.append(assistanceSection);
   }
   result.append(element(document, 'p', 'booking-note', 'RejseFlex bestiller ikke handicapkørsel, Handicapservice eller billetter.'));
   result.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
 }
 
-export function mountApp(root, { geocoder, map, trainSource, journeyStore = createJourneyStore() } = {}) {
+export function mountApp(root, { geocoder, map, mapFactory, trainSource, journeyStore = createJourneyStore() } = {}) {
   const document = root.ownerDocument;
   const selected = { from: null, to: null };
   root.innerHTML = `
@@ -187,6 +203,7 @@ export function mountApp(root, { geocoder, map, trainSource, journeyStore = crea
       </main>
       <footer><span>RejseFlex · Uofficiel rejseguide</span><span>Ingen booking foretages i appen</span></footer>
     </div>`;
+  map = map ?? mapFactory?.(root.querySelector('#address-map'));
   const savedSection = root.querySelector('#saved-journeys');
   const showStorageError = () => {
     savedSection.textContent = 'Lokal lagring virker ikke lige nu. Rejsen er ikke gemt; prøv igen senere.';
@@ -214,11 +231,12 @@ export function mountApp(root, { geocoder, map, trainSource, journeyStore = crea
       await showSavedJourneys();
     } catch { showStorageError(); }
   }
-  async function updateBooking(plan, action, value) {
+  async function updateBooking(plan, action, value, taskId = 'inbound') {
     try {
       const updated = action === 'time'
-        ? await recordBookingTime(plan, 'inbound', value, { trainSource })
-        : action === 'confirm-assistance' ? confirmAssistance(plan) : confirmBooking(plan, 'inbound');
+        ? await recordBookingTime(plan, taskId, value, { trainSource })
+        : action === 'confirm-assistance' ? confirmAssistance(plan)
+          : action === 'confirm-train' ? confirmTrainChoice(plan) : confirmBooking(plan, taskId);
       await journeyStore.save(updated);
       renderJourney(root, updated, saveSelected, updateBooking);
       await showSavedJourneys();

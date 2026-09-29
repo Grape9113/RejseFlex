@@ -56,6 +56,7 @@ export async function recordBookingTime(plan, taskId, time, { trainSource = crea
   updated.uncertainties.push({ code: 'unknown-transfer-buffer', taskId: 'train',
     explanation: 'Nødvendig overgangstid mellem togankomst og afhentning er ukendt. Kontrollér den med trafikselskabet.' });
   updated.conflicts = [];
+  updated.feasibility = 'foreløbig';
   if (candidate) {
     updated.legs[1] = { id: 'train', kind: 'tog', ...candidate };
     const assistance = updated.tasks.find((item) => item.id === 'assistance');

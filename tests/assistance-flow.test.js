@@ -20,6 +20,11 @@ test('bekræftet Handicapservice forbliver knyttet til det oprindelige tog efter
   assert.equal(changed.tasks.find((task) => task.id === 'assistance').status, 'bestilt');
   assert.ok(changed.conflicts.some((conflict) => conflict.code === 'assistance-train-changed'));
   assert.match(changed.nextAction.explanation, /Handicapservice.*kontrollér/i);
+  const restored = await recordBookingTime(changed, 'inbound', '2026-10-02T13:00:00Z', { trainSource: source });
+  assert.equal(restored.legs[1].id, 'late');
+  assert.equal(restored.feasibility, 'foreløbig');
+  assert.deepEqual(restored.conflicts, []);
+  assert.equal(restored.tasks.find((task) => task.id === 'assistance').trainId, 'late');
 });
 
 test('bruger kan bekræfte Handicapservice særskilt og genåbne den lokalt', async () => {

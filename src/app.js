@@ -1,9 +1,10 @@
-const sections = [
-  { title: 'Handicapkørsel', eyebrow: '1 · Til afgangsstationen', detail: 'Tid og trafikselskab er endnu ikke beregnet.' },
-  { title: 'Tog', eyebrow: '2 · Mellem stationer', detail: 'Afgang og ankomst er endnu ikke beregnet.' },
-  { title: 'Handicapservice', eyebrow: '3 · Assistance ved toget', detail: 'Behov og mødetid skal kontrolleres ved en rigtig rejse.' },
-  { title: 'Handicapkørsel', eyebrow: '4 · Til destinationen', detail: 'Afhentning og ankomst er endnu ikke beregnet.' },
-];
+import { proposeJourney } from './journey.js';
+
+function demoTime(value) {
+  return new Intl.DateTimeFormat('da-DK', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Copenhagen' }).format(new Date(value));
+}
+
+function placeName(place) { return place.label ?? place.name; }
 
 function element(document, tag, className, text) {
   const node = document.createElement(tag);
@@ -12,7 +13,8 @@ function element(document, tag, className, text) {
   return node;
 }
 
-function renderJourney(root, wish) {
+function renderJourney(root, plan) {
+  const { wish } = plan;
   const document = root.ownerDocument;
   const result = root.querySelector('#result');
   result.replaceChildren();
@@ -29,9 +31,9 @@ function renderJourney(root, wish) {
 
   const summary = element(document, 'p', 'journey-summary');
   summary.append(
-    element(document, 'strong', '', wish.from),
+    element(document, 'strong', '', placeName(wish.from)),
     document.createTextNode('  →  '),
-    element(document, 'strong', '', wish.to),
+    element(document, 'strong', '', placeName(wish.to)),
   );
   result.append(summary);
   const arrival = new Date(wish.arrival);
@@ -39,9 +41,21 @@ function renderJourney(root, wish) {
     dateStyle: 'long', timeStyle: 'short',
   }).format(arrival);
   result.append(element(document, 'p', 'arrival-note', `Ønsket ankomst på destinationsadressen: ${dateText}`));
-  result.append(element(document, 'p', 'provisional-note', 'Foreløbig demo: Ingen tider, stationer eller bookingregler er verificeret. Brug ikke planen til en virkelig rejse.'));
+  result.append(element(document, 'p', 'provisional-note', 'Foreløbig demo: Togtiderne er illustrative. Handicapkørsel, mødetid, bookingkanal, trafikselskab og pris er ukendt. Brug ikke planen til en virkelig rejse.'));
+
+  const action = element(document, 'section', 'next-action');
+  action.dataset.nextAction = '';
+  action.append(element(document, 'span', 'eyebrow', 'NÆSTE HANDLING · DEMO'), element(document, 'h3', '', plan.nextAction.title), element(document, 'p', '', plan.nextAction.explanation));
+  result.append(action);
 
   const cards = element(document, 'div', 'journey-cards');
+  const [first, train, last] = plan.legs;
+  const sections = [
+    { title: 'Handicapkørsel', eyebrow: '1 · Til afgangsstationen', detail: `${placeName(first.from)} → ${first.to.name}. Tid, trafikselskab, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'outbound').status },
+    { title: 'Tog', eyebrow: '2 · Mellem stationer', detail: `${train.fromStation.name} → ${train.toStation.name}. DEMO afgang ${demoTime(train.plannedDeparture)}, ankomst ${demoTime(train.plannedArrival)}.`, status: plan.tasks.find((task) => task.id === 'train').status },
+    { title: 'Handicapservice', eyebrow: '3 · Assistance ved toget', detail: `Knyttet til DEMO-toget ${train.fromStation.name} → ${train.toStation.name}. Frist og mødetid ukendt.`, status: plan.tasks.find((task) => task.id === 'assistance').status },
+    { title: 'Handicapkørsel', eyebrow: '4 · Til destinationen', detail: `${last.from.name} → ${placeName(last.to)}. Tid, trafikselskab, bookingkanal og pris ukendt.`, status: plan.tasks.find((task) => task.id === 'inbound').status },
+  ];
   for (const section of sections) {
     const card = element(document, 'article', 'journey-card');
     card.dataset.journeySection = '';
@@ -49,16 +63,26 @@ function renderJourney(root, wish) {
       element(document, 'span', 'card-step', section.eyebrow),
       element(document, 'h3', '', section.title),
       element(document, 'p', '', section.detail),
-      element(document, 'span', 'card-status', 'Afventer planlægning'),
+      element(document, 'span', 'card-status', section.status),
     );
     cards.append(card);
   }
   result.append(cards);
+  if (!plan.selected) {
+    const choose = element(document, 'button', 'select-plan', 'Vælg denne demorejse');
+    choose.type = 'button';
+    choose.dataset.selectPlan = '';
+    choose.addEventListener('click', () => {
+      plan.selected = true;
+      choose.replaceWith(element(document, 'p', 'selection-note', 'Demorejse valgt. Den er ikke gemt på enheden endnu.'));
+    });
+    result.append(choose);
+  }
   result.append(element(document, 'p', 'booking-note', 'RejseFlex bestiller ikke handicapkørsel, Handicapservice eller billetter.'));
   result.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
 }
 
-export function mountApp(root, { geocoder, map } = {}) {
+export function mountApp(root, { geocoder, map, trainSource } = {}) {
   const document = root.ownerDocument;
   const selected = { from: null, to: null };
   root.innerHTML = `
@@ -93,7 +117,7 @@ export function mountApp(root, { geocoder, map } = {}) {
             <label class="field arrival-field"><span>Ønsket ankomst på destinationsadressen</span><input name="arrival" type="datetime-local" required></label>
             <p class="search-disclosure">Kun den aktuelle søgetekst sendes til en ekstern adressetjeneste (OpenStreetMap Nominatim), når du trykker Find adresse. Gemte rejser sendes ikke.</p>
             <div class="map-panel"><div id="address-map" role="img" aria-label="Kort over valgte steder"></div><p>Kortdata © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a></p></div>
-            <div class="form-footer"><p><strong>Demo:</strong> Adresserne er virkelige opslag, men rejsekæden og dens tider er endnu ikke beregnet.</p><button type="submit">Vis demorejse <span aria-hidden="true">→</span></button></div>
+            <div class="form-footer"><p><strong>Demo:</strong> Adresserne er virkelige opslag, men rejsekæden og dens togtider er illustrative og kan ikke bruges til en virkelig rejse.</p><button type="submit">Vis demorejse <span aria-hidden="true">→</span></button></div>
           </form>
         </section>
         <section id="result" class="result" aria-live="polite" hidden></section>
@@ -142,7 +166,7 @@ export function mountApp(root, { geocoder, map } = {}) {
       } finally { button.disabled = false; }
     });
   }
-  root.querySelector('form').addEventListener('submit', (event) => {
+  root.querySelector('form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
@@ -150,10 +174,22 @@ export function mountApp(root, { geocoder, map } = {}) {
       for (const field of ['from', 'to']) if (!selected[field]) root.querySelector(`[data-feedback="${field}"]`).textContent = 'Find og vælg en adresse før du fortsætter.';
       return;
     }
-    renderJourney(root, {
-      from: selected.from?.label ?? form.elements.from.value.trim(),
-      to: selected.to?.label ?? form.elements.to.value.trim(),
+    const wish = {
+      from: selected.from ?? { label: form.elements.from.value.trim(), coordinates: null },
+      to: selected.to ?? { label: form.elements.to.value.trim(), coordinates: null },
       arrival: form.elements.arrival.value,
-    });
+    };
+    try {
+      const plan = await proposeJourney(wish, { trainSource });
+      if (plan.kind === 'no-train') {
+        const result = root.querySelector('#result');
+        result.hidden = false;
+        result.textContent = plan.message;
+      } else renderJourney(root, plan);
+    } catch {
+      const result = root.querySelector('#result');
+      result.hidden = false;
+      result.textContent = 'Demotogkilden virker ikke lige nu. Prøv igen senere.';
+    }
   });
 }

@@ -35,4 +35,13 @@ Det seneste tidspunkt, hvor brugeren ønsker at være fremme på destinationsadr
 Det tidspunkt, hvor brugeren ønsker at begynde rejsen fra startadressen. Et togforslag beregnet ud fra dette tidspunkt er fortsat foreløbigt, indtil handicapkørsel og nødvendige buffere er kontrolleret.
 
 **Trafikområde**:
-Det geografiske område, som bruges til at finde det relevante trafikselskab og dets regler for et handicapkørselsben.
+Det geografiske område, som hjælper med at afgøre bookingmåden for et handicapkørselsben. Området bestemmer ikke prisreglerne.
+
+**Visiterende trafikselskab**:
+Det trafikselskab, hvor brugeren er registreret til handicapkørsel. Det bestemmer prisreglerne, også når turen foregår i et andet trafikområde.
+
+**Turgeografi**:
+Forholdet mellem et handicapkørselsbens start- og slutområde og brugerens visiterende trafikselskab. Sammen med hele rejsens kontekst bruges det til at afgøre bookingmåden.
+
+**Prisoverslag**:
+En cirka-pris for et handicapkørselsben beregnet fra vejafstand, det visiterende trafikselskabs takst og kun en rabat, som den konkrete bookingmåde giver.

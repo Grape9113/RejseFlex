@@ -30,6 +30,7 @@ test('selected journey wish yields a demo chain and explained next action', asyn
     root.querySelector(`[data-place-option="${field}"]`).click();
   }
   form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
+  form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));
 

@@ -49,6 +49,7 @@ test('typing opens suggestions; keyboard selection stores coordinates and plans 
   form.elements.date.value = '2026-10-02';
   form.elements.time.value = '09:30';
   root.querySelector('[name="timeMode"][value="departure"]').checked = true;
+  form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await tick();
   assert.deepEqual(wishes[0].from.coordinates, from.coordinates);
@@ -104,6 +105,7 @@ test('arrival selection records the entered date and time as arrival', async () 
   }
   form.elements.date.value = '2026-10-03';
   form.elements.time.value = '15:45';
+  form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await tick();
   assert.equal(wishes[0].timeMode, 'arrival');

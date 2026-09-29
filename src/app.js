@@ -3,7 +3,7 @@ import { createJourneyStore } from './journey-store.js';
 import { renderJourney, element, placeName } from './journey-view.js';
 import { bindAddressSearch } from './address-input.js';
 
-export function mountApp(root, { geocoder, map, mapFactory, trainSource, journeyStore = createJourneyStore() } = {}) {
+export function mountApp(root, { geocoder, map, mapFactory, trainSource, trafficAreaSource, roadDistanceSource, journeyStore = createJourneyStore() } = {}) {
   const document = root.ownerDocument;
   const selected = { from: null, to: null };
   root.innerHTML = `
@@ -20,12 +20,12 @@ export function mountApp(root, { geocoder, map, mapFactory, trainSource, journey
             <form id="journey-form">
               <div class="place-field"><label class="field" for="from-address">Fra</label><input id="from-address" name="from" type="text" autocomplete="off" placeholder="Adresse eller sted" role="combobox" aria-autocomplete="list" aria-controls="from-options" aria-expanded="false" required><div class="place-options" id="from-options" data-options="from" role="listbox"></div><div class="place-feedback" data-feedback="from" role="status"></div></div>
               <div class="place-field"><label class="field" for="to-address">Til</label><input id="to-address" name="to" type="text" autocomplete="off" placeholder="Adresse eller sted" role="combobox" aria-autocomplete="list" aria-controls="to-options" aria-expanded="false" required><div class="place-options" id="to-options" data-options="to" role="listbox"></div><div class="place-feedback" data-feedback="to" role="status"></div></div>
-              <div class="date-time-row"><label class="field">Dato<input name="date" type="date" required></label><label class="field">Tidspunkt<input name="time" type="time" required></label></div>
+              <label class="field" for="handicap-provider">Trafikselskab for handicapkørsel<select id="handicap-provider" name="handicapProvider" required><option value="">Vælg dit trafikselskab</option><option value="MOVIA">Movia</option><option value="MIDTTRAFIK">Midttrafik</option><option value="FYNBUS">FynBus</option><option value="SYDTRAFIK">Sydtrafik</option><option value="NT">NT</option></select></label><div class="date-time-row"><label class="field">Dato<input name="date" type="date" required></label><label class="field">Tidspunkt<input name="time" type="time" required></label></div>
               <fieldset class="time-mode"><legend>Tidspunktet gælder</legend><label><input type="radio" name="timeMode" value="departure"> Afgang</label><label><input type="radio" name="timeMode" value="arrival" checked> Ankomst</label></fieldset>
               <button class="plan-button" type="submit">Planlæg rejse <span aria-hidden="true">→</span></button>
               <button type="button" class="saved-shortcut" data-open-saved hidden>Gemte rejser →</button>
               <p class="storage-feedback" data-storage-feedback role="status" hidden></p>
-              <p class="planner-note">Adressesøgning sendes til <a href="https://photon.komoot.io/" target="_blank" rel="noopener noreferrer">Photon</a>, mens du skriver. Adresser og kort bygger på <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>. Gemte rejser bliver på enheden. Togtider og regler i denne demo er illustrative.</p>
+              <p class="planner-note">Adressesøgning sendes til <a href="https://photon.komoot.io/" target="_blank" rel="noopener noreferrer">Photon</a>, mens du skriver. Adresser og kort bygger på <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>. Gemte rejser bliver på enheden. Togtider i denne demo er illustrative. Vejafstand beregnes via <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer">OSRM/FOSSGIS</a>, geografi via <a href="https://dataforsyningen.dk/" target="_blank" rel="noopener noreferrer">Dataforsyningen</a>; de valgte koordinater sendes til tjenesterne ved planlægning.</p>
             </form>
           </div>
         </section>
@@ -89,6 +89,9 @@ export function mountApp(root, { geocoder, map, mapFactory, trainSource, journey
       savedSection.textContent = error.message?.includes('lagring') ? error.message : `Ændringen kunne ikke gemmes. ${error.message ?? 'Prøv igen.'}`;
     }
   }
+  const providerSelect = root.querySelector('#handicap-provider');
+  if (journeyStore.getHandicapProvider) void journeyStore.getHandicapProvider().then((value) => { if (value && !providerSelect.value) providerSelect.value = value; }).catch(showStorageError);
+  providerSelect.addEventListener('change', () => { if (providerSelect.value && journeyStore.setHandicapProvider) void journeyStore.setHandicapProvider(providerSelect.value).catch(showStorageError); });
   void showSavedJourneys();
   bindAddressSearch(root, selected, geocoder, map);
   root.querySelector('form').addEventListener('submit', async (event) => {
@@ -106,7 +109,7 @@ export function mountApp(root, { geocoder, map, mapFactory, trainSource, journey
       [form.elements.timeMode.value]: `${form.elements.date.value}T${form.elements.time.value}`,
     };
     try {
-      const plan = await proposeJourney(wish, { trainSource });
+      const plan = await proposeJourney(wish, { trainSource, trafficAreaSource, roadDistanceSource, handicapProvider: providerSelect.value });
       if (plan.kind === 'no-train') {
         const result = root.querySelector('#result');
         showCoordination();

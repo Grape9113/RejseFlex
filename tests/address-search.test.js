@@ -32,6 +32,7 @@ test('user searches and selects both addresses before planning', async () => {
   assert.match(root.textContent, /aktuelle søgetekst.*ekstern/i);
   form.elements.arrival.value = '2026-10-02T14:00';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+  await new Promise((resolve) => setTimeout(resolve, 0));
   assert.match(root.querySelector('#result').textContent, /Søndersø, Nordfyn/);
 });
 

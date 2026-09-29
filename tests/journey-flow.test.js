@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { mountApp } from '../src/app.js';
 
-test('from journey wish to a clearly marked demo journey', () => {
+test('from journey wish to a clearly marked demo journey', async () => {
   const dom = new JSDOM('<main id="app"></main>', { url: 'https://example.test/RejseFlex/' });
   const root = dom.window.document.querySelector('#app');
   mountApp(root);
@@ -15,6 +15,7 @@ test('from journey wish to a clearly marked demo journey', () => {
   form.elements.to.value = 'Dock 1, Aarhus';
   form.elements.arrival.value = '2026-10-02T14:00';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   assert.match(root.textContent, /Søndersø/);
   assert.match(root.textContent, /Dock 1, Aarhus/);

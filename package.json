@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test",
+    "verify:deploy": "npm run build && node scripts/verify-public-build.js"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.22",

@@ -1,4 +1,5 @@
 import { proposeJourney } from './journey.js';
+import { createJourneyStore } from './journey-store.js';
 
 function demoTime(value) {
   return new Intl.DateTimeFormat('da-DK', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Copenhagen' }).format(new Date(value));
@@ -14,7 +15,7 @@ function element(document, tag, className, text) {
   return node;
 }
 
-function renderJourney(root, plan) {
+function renderJourney(root, plan, onSelect) {
   const { wish } = plan;
   const document = root.ownerDocument;
   const result = root.querySelector('#result');
@@ -86,17 +87,16 @@ function renderJourney(root, plan) {
     const choose = element(document, 'button', 'select-plan', 'Vælg denne demorejse');
     choose.type = 'button';
     choose.dataset.selectPlan = '';
-    choose.addEventListener('click', () => {
-      plan.selected = true;
-      choose.replaceWith(element(document, 'p', 'selection-note', 'Demorejse valgt. Den er ikke gemt på enheden endnu.'));
-    });
+    choose.addEventListener('click', () => onSelect(plan));
     result.append(choose);
+  } else {
+    result.append(element(document, 'p', 'selection-note', 'Demorejse valgt og gemt på denne enhed.'));
   }
   result.append(element(document, 'p', 'booking-note', 'RejseFlex bestiller ikke handicapkørsel, Handicapservice eller billetter.'));
   result.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
 }
 
-export function mountApp(root, { geocoder, map, trainSource } = {}) {
+export function mountApp(root, { geocoder, map, trainSource, journeyStore = createJourneyStore() } = {}) {
   const document = root.ownerDocument;
   const selected = { from: null, to: null };
   root.innerHTML = `
@@ -134,10 +134,39 @@ export function mountApp(root, { geocoder, map, trainSource } = {}) {
             <div class="form-footer"><p><strong>Demo:</strong> Adresserne er virkelige opslag, men rejsekæden og dens togtider er illustrative og kan ikke bruges til en virkelig rejse.</p><button type="submit">Vis demorejse <span aria-hidden="true">→</span></button></div>
           </form>
         </section>
+        <section id="saved-journeys" aria-live="polite"></section>
         <section id="result" class="result" aria-live="polite" hidden></section>
       </main>
       <footer><span>RejseFlex · Uofficiel rejseguide</span><span>Ingen booking foretages i appen</span></footer>
     </div>`;
+  const savedSection = root.querySelector('#saved-journeys');
+  const showStorageError = () => {
+    savedSection.textContent = 'Lokal lagring virker ikke lige nu. Rejsen er ikke gemt; prøv igen senere.';
+  };
+  async function showSavedJourneys() {
+    try {
+      const plans = await journeyStore.list();
+      savedSection.replaceChildren();
+      if (!plans.length) return;
+      savedSection.append(element(document, 'h2', '', 'Gemte rejser'));
+      for (const plan of plans) {
+        const button = element(document, 'button', '', `${placeName(plan.wish.from)} → ${placeName(plan.wish.to)}`);
+        button.type = 'button';
+        button.dataset.openPlan = '';
+        button.addEventListener('click', () => renderJourney(root, plan, saveSelected));
+        savedSection.append(button);
+      }
+    } catch { showStorageError(); }
+  }
+  async function saveSelected(plan) {
+    const selectedPlan = { ...plan, id: plan.id ?? globalThis.crypto?.randomUUID?.() ?? `journey-${Date.now()}-${Math.random()}`, selected: true, documentReferences: plan.documentReferences ?? [] };
+    try {
+      await journeyStore.save(selectedPlan);
+      renderJourney(root, selectedPlan, saveSelected);
+      await showSavedJourneys();
+    } catch { showStorageError(); }
+  }
+  void showSavedJourneys();
   for (const field of ['from', 'to']) {
     const input = root.querySelector(`[name="${field}"]`);
     const feedback = root.querySelector(`[data-feedback="${field}"]`);
@@ -199,7 +228,7 @@ export function mountApp(root, { geocoder, map, trainSource } = {}) {
         const result = root.querySelector('#result');
         result.hidden = false;
         result.textContent = plan.message;
-      } else renderJourney(root, plan);
+      } else renderJourney(root, plan, saveSelected);
     } catch {
       const result = root.querySelector('#result');
       result.hidden = false;

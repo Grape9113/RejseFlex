@@ -20,6 +20,10 @@ export function createDemoTrainSource() {
 
 function bookingAction(plan) {
   const inbound = plan.tasks.find((task) => task.id === 'inbound');
+  if (plan.conflicts?.some((conflict) => conflict.code === 'assistance-train-changed')) return {
+    taskId: 'assistance', title: 'Kontrollér Handicapservice-aftalen',
+    explanation: 'Handicapservice er bekræftet til et andet tog. Kontrollér den eksterne aftale hos DSB, før du fortsætter. Appen ændrer ikke aftalen.', mode: 'demo',
+  };
   if (plan.conflicts?.length) return {
     taskId: 'inbound', title: 'Tiderne passer ikke sammen',
     explanation: 'Det valgte tog kan ikke nå den oplyste afhentning. Kontakt trafikselskabet for at ændre aftalen eller find et andet tog. Bekræftede aftaler ændres ikke i appen.', mode: 'demo',
@@ -54,7 +58,15 @@ export async function recordBookingTime(plan, taskId, time, { trainSource = crea
   updated.conflicts = [];
   if (candidate) {
     updated.legs[1] = { id: 'train', kind: 'tog', ...candidate };
-    updated.tasks.find((item) => item.id === 'assistance').trainId = candidate.id;
+    const assistance = updated.tasks.find((item) => item.id === 'assistance');
+    if (assistance.confirmed && assistance.trainId !== candidate.id) {
+      updated.feasibility = 'konflikt';
+      updated.conflicts.push({ code: 'assistance-train-changed', taskIds: ['train', 'assistance'],
+        explanation: 'Handicapservice er bekræftet til et andet tog. Kontrollér den eksterne aftale hos DSB. RejseFlex ændrer den ikke.' });
+    } else if (!assistance.confirmed) {
+      assistance.trainId = candidate.id;
+      assistance.stationIds = [candidate.fromStation.id, candidate.toStation.id];
+    }
     updated.tasks.find((item) => item.id === 'train').status = 'afventer brugerinput';
   } else {
     updated.feasibility = 'konflikt';
@@ -73,6 +85,16 @@ export function confirmBooking(plan, taskId) {
   if (!task?.actualBookingTime) throw new Error('Registrér den oplyste afhentningstid først.');
   task.status = 'bestilt';
   task.confirmed = true;
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
+export function confirmAssistance(plan) {
+  const updated = structuredClone(plan);
+  const assistance = updated.tasks.find((task) => task.id === 'assistance');
+  if (!assistance?.trainId) throw new Error('Vælg et tog før Handicapservice bekræftes.');
+  assistance.status = 'bestilt';
+  assistance.confirmed = true;
   updated.nextAction = bookingAction(updated);
   return updated;
 }
@@ -107,7 +129,9 @@ export async function proposeJourney(wish, { trainSource = createDemoTrainSource
   const tasks = [
     { id: 'inbound', kind: 'handicapkørsel', status: orderRule && toArea.kind === 'known' ? 'klar til booking' : 'afventer brugerinput', dependsOn: [] },
     { id: 'train', kind: 'togvalg', status: 'ikke klar', dependsOn: ['inbound'] },
-    { id: 'assistance', kind: 'Handicapservice', status: 'ikke klar', dependsOn: ['train'], trainId: train.id, bookingDeadline: { kind: 'unknown' }, meetingTime: { kind: 'unknown' } },
+    { id: 'assistance', kind: 'Handicapservice', status: 'ikke klar', dependsOn: ['train'], trainId: train.id,
+      stationIds: [train.fromStation.id, train.toStation.id], bookingDeadline: { kind: 'unknown' },
+      meetingTime: { kind: 'unknown' }, tips: [] },
     { id: 'outbound', kind: 'handicapkørsel', status: 'ikke klar', dependsOn: ['assistance'] },
   ];
   const blocking = uncertainties.find((item) => item.taskId === 'inbound' && item.code !== 'unknown-price');

@@ -32,3 +32,12 @@ test('an expired necessary rule creates a control action instead of a booking in
   assert.match(plan.nextAction.title, /kontrollér|afklar/i);
   assert.match(plan.nextAction.explanation, /udløbet/i);
 });
+
+test('next action follows task dependencies even if task list order changes', async () => {
+  const { recordBookingTime, confirmBooking } = await import('../src/journey.js');
+  const initial = await proposeJourney(wish);
+  const timed = await recordBookingTime(initial, 'inbound', '2026-10-02T12:00:00Z');
+  timed.tasks.reverse();
+  const confirmed = confirmBooking(timed, 'inbound');
+  assert.equal(confirmed.nextAction.taskId, 'train');
+});

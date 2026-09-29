@@ -25,3 +25,15 @@ export function evaluateRules(rules, { onDate, required = ['booking-order'], are
   }
   return { applied, uncertainties };
 }
+
+// Presentation guidance for the illustrative workflow. Transport-specific advice belongs here.
+export const demoTaskGuidance = {
+  inbound: { title: 'Afklar sidste handicapkørsel', explanation: 'Tid, bookingkanal og pris for sidste handicapkørsel skal kontrolleres hos trafikselskabet.', pending: { title: 'Bekræft den eksterne bestilling', explanation: 'Afhentningstiden er registreret, men bestillingen er ikke bekræftet. Bekræft kun, hvis du har gennemført den hos trafikselskabet.' } },
+  train: { title: 'Kontrollér togforslaget', explanation: 'Togforslaget er genberegnet. Kontrollér forbindelsen og den ukendte overgangsbuffer før du markerer togvalget som kontrolleret.' },
+  assistance: { title: 'Afklar Handicapservice', explanation: 'Kontrollér frist og mødetid hos DSB, og bekræft kun en gennemført ekstern bestilling.' },
+  outbound: { title: 'Afklar første handicapkørsel', explanation: 'Kontrollér trafikområde, bookingkanal og nødvendig tid til afgangsstationen hos trafikselskabet. Togtider og overgangsbuffer er fortsat illustrative eller ukendte.' },
+};
+export const demoConflictGuidance = {
+  'assistance-train-changed': { taskId: 'assistance', title: 'Kontrollér Handicapservice-aftalen', explanation: 'Handicapservice er bekræftet til en anden togplan. Kontrollér den eksterne aftale hos DSB, før du fortsætter. Appen ændrer ikke aftalen.' },
+  'no-train-before-pickup': { taskId: 'inbound', title: 'Tiderne passer ikke sammen', explanation: 'Det valgte tog kan ikke nå den oplyste afhentning. Kontakt trafikselskabet for at ændre aftalen eller find et andet tog. Bekræftede aftaler ændres ikke i appen.' },
+};

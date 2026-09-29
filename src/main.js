@@ -1,7 +1,11 @@
 import './styles.css';
+import 'leaflet/dist/leaflet.css';
 import { mountApp } from './app.js';
+import { geocoder } from './geocoding.js';
+import { mountMap } from './map.js';
 
-mountApp(document.querySelector('#app'));
+const root = document.querySelector('#app');
+mountApp(root, { geocoder, map: mountMap(root.querySelector('#address-map')) });
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

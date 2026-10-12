@@ -24,8 +24,8 @@ export function getHandicapBookingInstruction({ provider, tripGeography, journey
   return { method: actionType === 'BOOK_DIGITALLY' ? 'SELF_SERVICE' : actionType === 'MANUAL_BOOKING_REQUIRED' ? 'UNKNOWN' : 'PHONE', actionType, discountEligible, source: rule.source };
 }
 
-export function resolveHandicapTrip({ provider, distanceKm, tripGeography, journeyContext = 'LOCAL' }) {
+export function resolveHandicapTrip({ provider, distanceKm, tripGeography, journeyContext = 'LOCAL', calculateFare = true }) {
   if (!provider) return { kind: 'PROVIDER_REQUIRED' };
   const booking = getHandicapBookingInstruction({ provider, tripGeography, journeyContext });
-  return { kind: 'KNOWN', provider, booking, fare: Number.isFinite(distanceKm) ? calculateHandicapFare({ provider, distanceKm, discountEligible: booking.discountEligible }) : null };
+  return { kind: 'KNOWN', provider, booking, fare: calculateFare && Number.isFinite(distanceKm) ? calculateHandicapFare({ provider, distanceKm, discountEligible: booking.discountEligible }) : null };
 }

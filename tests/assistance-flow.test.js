@@ -40,7 +40,7 @@ test('bruger kan bekræfte Handicapservice særskilt og genåbne den lokalt', as
   form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await tick(); root.querySelector('[data-select-plan]').click(); await tick();
-  assert.match(root.querySelector('[data-assistance-task]').textContent, /frist.*ukendt.*mødetid.*ukendt/i);
+  assert.match(root.querySelector('[data-assistance-task]').textContent, /Mødetid.*11.45.*Bestillingsfrist.*kontrolleres/i);
   root.querySelector('[data-booking-time]').value = '2026-10-02T13:00';
   root.querySelector('[data-record-time]').click(); await tick();
   root.querySelector('[data-confirm-booking]').click(); await tick();

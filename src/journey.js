@@ -12,8 +12,8 @@ export function createDemoTrainSource({ stationSource } = {}) {
       const [fromStation, toStation] = stationSource ? await Promise.all([stationSource.nearby(wish.from.coordinates), stationSource.nearby(wish.to.coordinates)]) : [null, null];
       return [{
         id: 'illustrative-train',
-        fromStation: fromStation ?? { id: 'demo-start', name: 'Demostation ved start' },
-        toStation: toStation ?? { id: 'demo-end', name: 'Demostation ved destination' },
+        fromStation: wish.stations?.from ?? fromStation ?? { id: 'demo-start', name: 'Demostation ved start' },
+        toStation: wish.stations?.to ?? toStation ?? { id: 'demo-end', name: 'Demostation ved destination' },
         plannedDeparture: trainDeparture,
         plannedArrival: trainArrival,
         disruption: { kind: 'unknown' },
@@ -135,6 +135,20 @@ export async function refreshTrainSuggestion(plan, { trainSource = createDemoTra
   return updated;
 }
 
+// Explicit user edits preserve confirmation; only open proposals may be recalculated.
+export async function editBookingTime(plan, taskId, time, options = {}) {
+  const task = plan.tasks.find(item => item.id === taskId);
+  if (!task?.confirmed) return recordBookingTime(plan, taskId, time, options);
+  if (!['inbound', 'outbound'].includes(taskId) || !Number.isFinite(Date.parse(time))) throw new Error('Angiv en gyldig afhentningstid.');
+  const updated = structuredClone(plan);
+  updated.tasks.find(item => item.id === taskId).actualBookingTime = time;
+  updated.legs.find(item => item.id === taskId).actualBookingTime = time;
+  if (taskId === 'inbound') await replanOpenTrain(updated, time, options.trainSource ?? createDemoTrainSource());
+  refreshTaskReadiness(updated);
+  updated.nextAction = bookingAction(updated);
+  return updated;
+}
+
 export function confirmBooking(plan, taskId) {
   if (!['inbound', 'outbound'].includes(taskId)) throw new Error('Kun handicapkørsel kan bekræftes.');
   const updated = structuredClone(plan);
@@ -170,7 +184,7 @@ export function confirmTrainChoice(plan) {
 }
 
 export async function proposeJourney(wish, { trainSource = createDemoTrainSource(), rules = demoRules,
-  trafficAreaSource = { classify: async () => ({ kind: 'unknown' }) }, roadDistanceSource, handicapProvider = null } = {}) {
+  trafficAreaSource = { classify: async () => ({ kind: 'unknown' }) }, roadDistanceSource, handicapProvider = null, calculatePrices = true } = {}) {
   const [train] = await trainSource.findConnections(wish);
   if (!train) return { kind: 'no-train', message: 'Demotogkilden fandt ingen forbindelse. Prøv et andet tidspunkt.' };
   const [fromArea, toArea] = await Promise.all([
@@ -185,11 +199,11 @@ export async function proposeJourney(wish, { trainSource = createDemoTrainSource
   const uncertainties = [...evaluated.uncertainties];
   const makeLeg = async (id, from, to, originArea, destinationArea) => {
     const tripGeography = classifyTripGeography(originArea, destinationArea, handicapProvider);
-    const distanceKm = roadDistanceSource ? await roadDistanceSource.distanceKm(from.coordinates, to.coordinates) : null;
+    const distanceKm = calculatePrices && roadDistanceSource ? await roadDistanceSource.distanceKm(from.coordinates, to.coordinates) : null;
     const handicapTrip = handicapProvider
-      ? resolveHandicapTrip({ provider: handicapProvider, distanceKm, tripGeography, journeyContext }) : null;
+      ? resolveHandicapTrip({ provider: handicapProvider, distanceKm, tripGeography, journeyContext, calculateFare: calculatePrices }) : null;
     if (!handicapProvider) uncertainties.push({ code: 'missing-handicap-provider', taskId: id, explanation: 'Vælg dit visiterende trafikselskab for at få pris og bookingvejledning.' });
-    if (distanceKm === null) uncertainties.push({ code: 'unknown-price', taskId: id, explanation: 'Vejafstand kunne ikke beregnes. Kontrollér pris hos dit trafikselskab.' });
+    if (calculatePrices && distanceKm === null) uncertainties.push({ code: 'unknown-price', taskId: id, explanation: 'Vejafstand kunne ikke beregnes. Kontrollér pris hos dit trafikselskab.' });
     if (tripGeography.kind === 'UNKNOWN') uncertainties.push({ code: 'unknown-traffic-area', taskId: id, explanation: 'Turens geografi kunne ikke fastlægges. Kontrollér bookingmåden hos dit trafikselskab.' });
     return { id, kind: 'handicapkørsel', from, to, plannedTime: null,
       bookingChannel: handicapTrip ? { kind: 'known', ...handicapTrip.booking } : { kind: 'unknown' },

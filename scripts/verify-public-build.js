@@ -10,7 +10,7 @@ async function walk(dir) {
   }
 }
 await walk('dist');
-const allowed = /^(index\.html|manifest\.webmanifest|sw\.js|icon-(192|512)\.png|assets\/[\w-]+\.(js|css))$/;
+const allowed = /^(index\.html|manifest\.webmanifest|sw\.js|icon-(192|512)\.png|assets\/[\w.-]+\.(js|mjs|css))$/;
 const unexpected = files.filter((file) => !allowed.test(file));
 if (unexpected.length) throw new Error(`Unexpected public build files: ${unexpected.join(', ')}`);
 for (const required of ['index.html', 'manifest.webmanifest', 'sw.js', 'icon-192.png', 'icon-512.png']) {

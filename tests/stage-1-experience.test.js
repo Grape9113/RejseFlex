@@ -33,8 +33,8 @@ test('mobilbruger søger, vælger, registrerer tid, genberegner og genåbner den
   form.elements.date.value = '2026-10-02'; form.elements.time.value = '14:00';
   form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); await tick();
-  assert.match(root.querySelector('#result').textContent, /DEMOREJSE.*Foreløbig rejseplan.*NÆSTE HANDLING/s);
-  assert.equal(root.querySelectorAll('[data-journey-section]').length, 4);
+  assert.match(root.querySelector('#result').textContent, /Demo.*Togtiderne er illustrative/s);
+  assert.equal(root.querySelectorAll('[data-journey-section]').length, 3);
   assert.equal(saved.size, 0);
   root.querySelector('[data-select-plan]').click(); await tick();
   root.querySelector('[data-booking-time]').value = '2026-10-02T13:00';
@@ -47,9 +47,9 @@ test('mobilbruger søger, vælger, registrerer tid, genberegner og genåbner den
   assert.match(root.querySelector('[data-next-action]').textContent, /første handicapkørsel/i);
   const reopened = openApp(); await tick();
   reopened.root.querySelector('[data-open-plan]').click();
-  assert.match(reopened.root.querySelector('#result').textContent, /Bekræftet ekstern bestilling/);
+  assert.match(reopened.root.querySelector('#result').textContent, /Ekstern bestilling bekræftet/);
   assert.match(reopened.root.querySelector('[data-assistance-task]').textContent, /Bekræftet ekstern Handicapservice-bestilling/);
-  assert.match(reopened.root.querySelector('#result').textContent, /Foreløbig rejseplan/);
+  assert.match(reopened.root.querySelector('#result').textContent, /Forbehold og oplysninger/);
 });
 
 test('alle fire demotrin kan registreres i rækkefølge', async () => {

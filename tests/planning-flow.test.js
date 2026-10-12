@@ -38,13 +38,13 @@ test('selected journey wish yields a demo chain and explained next action', asyn
   assert.deepEqual(queries[0].from, from);
   assert.deepEqual(queries[0].to, to);
   assert.equal(queries[0].arrival, '2026-10-02T14:00');
-  assert.equal(root.querySelectorAll('[data-journey-section]').length, 4);
+  assert.equal(root.querySelectorAll('[data-journey-section]').length, 3);
   assert.match(root.querySelector('#result').textContent, /Odense St\./);
   assert.match(root.querySelector('#result').textContent, /Aarhus H/);
   assert.match(root.querySelector('#result').textContent, /12[.:]30/);
   assert.match(root.querySelector('[data-next-action]').textContent, /sidste handicapkørsel/i);
-  assert.match(root.querySelector('[data-next-action]').textContent, /toget afhænger/i);
-  assert.match(root.querySelector('#result').textContent, /DEMO/);
+  assert.match(root.querySelector('[data-next-action]').textContent, /registrér.*afhentningstid/i);
+  assert.match(root.querySelector('#result').textContent, /Demo/);
   assert.ok(root.querySelector('[data-select-plan]'));
   root.querySelector('[data-select-plan]').click();
   assert.match(root.querySelector('[data-next-action]').textContent, /sidste handicapkørsel/i);

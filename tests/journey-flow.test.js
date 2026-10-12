@@ -22,10 +22,10 @@ test('from journey wish to a clearly marked demo journey', async () => {
   assert.match(root.textContent, /Dock 1, Aarhus/);
   assert.match(root.textContent, /14[.:]00/);
   assert.match(root.textContent, /demo/i);
-  assert.equal(root.querySelectorAll('[data-journey-section]').length, 4);
+  assert.equal(root.querySelectorAll('[data-journey-section]').length, 3);
   assert.deepEqual(
     [...root.querySelectorAll('[data-journey-section] h3')].map((heading) => heading.textContent),
-    ['Handicapkørsel', 'Tog', 'Handicapservice', 'Handicapkørsel'],
+    ['Handicapkørsel til stationen', 'Togrejse & DSB Handicapservice', 'Handicapkørsel til destinationen'],
   );
   assert.match(root.textContent, /bestiller ikke/i);
 });

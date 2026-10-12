@@ -45,3 +45,12 @@ Forholdet mellem et handicapkørselsbens start- og slutområde og brugerens visi
 
 **Prisoverslag**:
 En cirka-pris for et handicapkørselsben beregnet fra vejafstand, det visiterende trafikselskabs takst og kun en rabat, som den konkrete bookingmåde giver.
+
+**Registreret udgift**:
+Den faktiske pris, brugeren selv har angivet for ét rejseben. Manglende udgifter er ukendte, ikke nul.
+
+**Mødeinterval**:
+Brugerens valg af, hvor mange minutter før togafgang vedkommende vil møde til Handicapservice. Det er ikke en bekræftet mødeaftale eller en overgangsbuffer.
+
+**Rejsedokument**:
+En assistanceplan eller kørestolspladsbillet knyttet til én gemt rejseplan. Originalen tilhører brugeren og opbevares lokalt.

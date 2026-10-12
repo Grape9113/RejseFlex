@@ -25,3 +25,15 @@ Alle tastaturhandlinger har synlig `:focus-visible`. Felter får blå kant og fo
 ## Kontrol ved videreudvikling
 
 Kontrollér planlægning, adresseforslag, rejseoversigt, gemte rejser, bookingtrin og fejltilstande ved både mobil- og desktopbredde. Bevar labels, live-regioner og alle demo- og datatjenesteforbehold. Kør `npm test` og `npm run verify:deploy`.
+
+## Rejseoversigt og personlige oplysninger
+
+Rejseoversigten viser tre rejseben i én lodret tidslinje. Handicapservice er integreret i togbenet med selvstændige bookingkontroller. Gemte rejser, stationsredigering, kilder og kontroloplysninger kan udfoldes. Der er ingen særskilte bookingpaneler under tidslinjen.
+
+Manuelle udgifter gemmes som heltal i øre i `manualPrices`, uafhængigt af `priceEstimate`. Manglende værdier udelades. Vis kun "Samlet pris", når alle tre priser er registreret; ellers "Registrerede udgifter". Takstmodulerne bevares, men appens planlægning bruger `calculatePrices: false`.
+
+Mødeinterval er 15 minutter som standard, eller 30 efter brugerens valg. Mødetiden beregnes fra togafgangen; ved bekræftet Handicapservice bruges den bekræftede togidentitet. Dette ændrer ingen bookingbuffer. Eksplicit redigering af en bekræftet afhentning kræver brugerhandling og bevarer andre aftaler; genberegning må aldrig ændre deres tider.
+
+Stationskomponenten (`station-select.js`) bruger stationers ID, navn og koordinater. Eksempeldata findes separat i `stations.js`. Automatisk bestemte og tidligere gemte stationer uden for datasættet bevares som valgbare værdier. Adresse-autocomplete er uafhængig. Stationsredigering efter registrering af aftaler er spærret, så aftaler ikke flyttes til en anden station ved et uheld.
+
+Dokumentoriginaler opbevares som ArrayBuffer i IndexedDB med journeyId. Henvisning og bytes erstattes eller fjernes i samme transaktion. PDF læses med [PDF.js](https://github.com/mozilla/pdf.js), DOCX med [docx-preview](https://github.com/VolodymyrBaydalka/docxjs). Bibliotekerne indlæses først ved brug. DOCX vises i en iframe uden scripts og med en Content Security Policy, der blokerer eksterne ressourcer. PDF-worker leveres med appens offentlige assets. Dokumenter over 20 MB afvises; DOCX må højst være 60 MB udpakket. Beskadigede eller adgangskodebeskyttede dokumenter giver en læsbar fejl; originalen kan stadig hentes. Browsergengivelse af Word-layout kan afvige fra Word.

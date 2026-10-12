@@ -32,7 +32,7 @@ test('only chosen rejseplan is locally saved and reopened after reload', async (
   first.root.querySelector('[data-select-plan]').click();
   await tick();
   assert.equal(saved.size, 1);
-  assert.match(first.root.textContent, /gemt på denne enhed/i);
+  assert.ok(first.root.querySelector('[data-open-plan]'));
   const second = setup(store);
   await tick();
   assert.match(second.root.textContent, /Gemte rejser/i);

@@ -16,7 +16,9 @@ export function mountApp(root, { geocoder, map, mapFactory, trainSource, traffic
         <section class="planner-screen" aria-label="Planlæg rejse">
           <div class="planner-map" id="address-map" role="region" aria-label="Interaktivt kort over valgte steder"></div>
           <div class="planner-panel">
+            <span class="eyebrow">DIN REJSE, TRIN FOR TRIN</span>
             <h1>Planlæg rejse</h1>
+            <p class="planner-intro">Få overblik over handicapkørsel, tog og assistance på din rejse.</p>
             <form id="journey-form">
               <div class="place-field"><label class="field" for="from-address">Fra</label><input id="from-address" name="from" type="text" autocomplete="off" placeholder="Adresse eller sted" role="combobox" aria-autocomplete="list" aria-controls="from-options" aria-expanded="false" required><div class="place-options" id="from-options" data-options="from" role="listbox"></div><div class="place-feedback" data-feedback="from" role="status"></div></div>
               <div class="place-field"><label class="field" for="to-address">Til</label><input id="to-address" name="to" type="text" autocomplete="off" placeholder="Adresse eller sted" role="combobox" aria-autocomplete="list" aria-controls="to-options" aria-expanded="false" required><div class="place-options" id="to-options" data-options="to" role="listbox"></div><div class="place-feedback" data-feedback="to" role="status"></div></div>

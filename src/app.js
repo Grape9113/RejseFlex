@@ -15,6 +15,7 @@ import {
   proposeJourney,
   recordBookingTime,
   editBookingTime,
+  withSelfTransport,
   confirmBooking,
   confirmAssistance,
   confirmTrainChoice,
@@ -204,7 +205,12 @@ export function mountApp(
         );
         if (proposal.kind !== "journey") throw new Error(proposal.message);
         updated = { ...saved, ...proposal, id: saved.id, selected: true };
-      } else if (action === "price")
+        for (const id of ["outbound", "inbound"])
+          if (saved.tasks.find((task) => task.id === id)?.selfManaged)
+            updated = withSelfTransport(updated, id, true);
+      } else if (action === "self-transport")
+        updated = withSelfTransport(saved, taskId, value);
+      else if (action === "price")
         updated = withManualPrice(saved, taskId, value);
       else if (action === "interval")
         updated = withMeetingInterval(saved, value);

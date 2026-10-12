@@ -46,4 +46,6 @@ Adresseforslag vises i en combobox med grid-popup, fordi adressens valg og favor
 
 Favoritter er brugerens eksplicitte valg og gemmes som komplette adresseobjekter i IndexedDB-indstillingen `favoriteAddresses`. Der oprettes ingen søgehistorik. Samme favoritter bruges i begge felter, står i en særskilt sektion, og overlap med søgeresultater fjernes efter stabil adresseidentifikation. Favoritter kan vælges uden geocoder-netværksadgang.
 
-Kortmarkører er Leaflet-divIcons, så ingen PNG-stier er nødvendige. A er afgang med blå fyldning; B er destination med hvid fyldning og blå kant. Retningen sendes separat til kortet, så en destination uden afgang stadig får B. Popuptekst indsættes som tekst, ikke HTML.
+Kortmarkører er Leaflet-divIcons, så ingen PNG-stier er nødvendige. A er afgang med hvid fyldning og blå kant; B er destination med blå fyldning. Retningen sendes separat til kortet, så en destination uden afgang stadig får B. Popuptekst indsættes som tekst, ikke HTML.
+
+Selvtransport vælges uafhængigt på første og sidste handicapkørselsben og er fravalgt som standard. Tilvalget opfylder det pågældende bookingkrav, uden at ændre registrerede eksterne aftaler, tider eller manuelle priser. Fravalg genindfører bookingkravet. Togvalg og Handicapservice beholder deres egne kontroller.

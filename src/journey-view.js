@@ -1,3 +1,4 @@
+import { activeConflicts } from "./journey.js";
 import { stationSelect } from "./station-select.js";
 import { exampleStations } from "./stations.js";
 import {
@@ -56,6 +57,9 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
     try {
       await onUpdate(plan, action, value, id);
     } catch (error) {
+      if (action === "self-transport")
+        container.querySelector(`[data-self-transport="${id}"]`).checked =
+          plan.tasks.find((task) => task.id === id)?.selfManaged === true;
       if (action === "interval")
         container.querySelector(".meeting-time").textContent =
           `Mødetid · ${dateTime(meetingTime(plan))}`;
@@ -65,13 +69,15 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
       buttons.forEach((item) => (item.disabled = false));
       if (!container.isConnected) {
         const target =
-          action === "interval"
-            ? root.querySelector(`[data-meeting-interval="${value}"]`)
-            : action === "price"
-              ? root.querySelector(`[data-price-action="${id}"]`)
-              : root.querySelector(
-                  `[data-stage="${id ?? "train"}"] .stage-heading h3`,
-                );
+          action === "self-transport"
+            ? root.querySelector(`[data-self-transport="${id}"]`)
+            : action === "interval"
+              ? root.querySelector(`[data-meeting-interval="${value}"]`)
+              : action === "price"
+                ? root.querySelector(`[data-price-action="${id}"]`)
+                : root.querySelector(
+                    `[data-stage="${id ?? "train"}"] .stage-heading h3`,
+                  );
         if (target) {
           if (target.tagName === "H3") target.tabIndex = -1;
           target.focus();
@@ -194,6 +200,46 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
   const booking = (stage, id) => {
     const bookingTask = task(id);
     const controls = element(document, "div", "stage-booking");
+    const selfLabel = element(document, "label", "self-transport-control");
+    const self = element(document, "input");
+    self.type = "checkbox";
+    self.checked = bookingTask.selfManaged === true;
+    self.dataset.selfTransport = id;
+    self.addEventListener(
+      "change",
+      () => void execute(controls, "self-transport", self.checked, id),
+    );
+    selfLabel.append(
+      self,
+      document.createTextNode(
+        id === "outbound"
+          ? "Jeg transporterer mig selv til stationen"
+          : "Jeg transporterer mig selv fra stationen",
+      ),
+    );
+    controls.append(selfLabel);
+    if (bookingTask.selfManaged) {
+      controls.append(
+        element(
+          document,
+          "p",
+          "compact-status",
+          "Du sørger selv for denne transport",
+        ),
+      );
+      if (bookingTask.confirmed)
+        controls.append(
+          element(
+            document,
+            "p",
+            "muted",
+            "Den tidligere eksterne bestilling er stadig registreret; den afbestilles ikke af RejseFlex.",
+          ),
+        );
+      stage.append(controls);
+      addPrice(stage, id);
+      return;
+    }
     const suffix = id === "outbound" ? "Outbound" : "";
     if (bookingTask.actualBookingTime)
       controls.append(
@@ -570,7 +616,7 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
         `${summary.complete ? "Samlet pris" : "Registrerede udgifter"} · ${money(summary.cents)}`,
       ),
     );
-  const conflicts = plan.conflicts ?? [];
+  const conflicts = activeConflicts(plan);
   if (conflicts.length) {
     const warning = element(document, "div", "journey-conflicts");
     warning.dataset.conflicts = "";
@@ -597,20 +643,21 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
       (plan.uncertainties ?? []).map((item) => [item.explanation, item]),
     ).values(),
   ])
-    if (item.code !== "unknown-price")
+    if (item.code !== "unknown-price" && !task(item.taskId)?.selfManaged)
       uncertainties.append(element(document, "p", "", item.explanation));
   details.append(uncertainties);
   const rules = element(document, "div");
   rules.dataset.appliedRules = "";
   for (const rule of plan.appliedRules ?? [])
-    rules.append(
-      element(
-        document,
-        "p",
-        "",
-        `${rule.explanation} Kilde: ${rule.source}. Sidst verificeret: ${rule.lastVerified}.`,
-      ),
-    );
+    if (!task(rule.effect?.firstTaskId)?.selfManaged)
+      rules.append(
+        element(
+          document,
+          "p",
+          "",
+          `${rule.explanation} Kilde: ${rule.source}. Sidst verificeret: ${rule.lastVerified}.`,
+        ),
+      );
   details.append(rules);
   details.append(
     element(

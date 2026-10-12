@@ -54,3 +54,6 @@ Brugerens valg af, hvor mange minutter før togafgang vedkommende vil møde til 
 
 **Rejsedokument**:
 En assistanceplan eller kørestolspladsbillet knyttet til én gemt rejseplan. Originalen tilhører brugeren og opbevares lokalt.
+
+**Selvtransport**:
+Brugerens valg om selv at sørge for et transportben, så handicapkørsel ikke er nødvendig. Valget afbestiller ikke en eksisterende ekstern aftale.

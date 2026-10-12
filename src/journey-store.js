@@ -1,3 +1,4 @@
+import { addressKey, validFavorite } from "./address-favorites.js";
 // Personal data stays in browser storage. This boundary can also hold binary documents later.
 export function createJourneyStore(indexedDB = globalThis.indexedDB) {
   function database() {
@@ -40,6 +41,42 @@ export function createJourneyStore(indexedDB = globalThis.indexedDB) {
     }
   }
   return {
+    listFavorites: async () =>
+      (
+        await operation("settings", "readonly", (store) =>
+          store.get("favoriteAddresses"),
+        )
+      )?.value?.filter(validFavorite) ?? [],
+    async toggleFavorite(place) {
+      if (!validFavorite(place))
+        throw new Error("Adressen mangler gyldige koordinater.");
+      const db = await database();
+      try {
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction("settings", "readwrite");
+          const store = tx.objectStore("settings");
+          let favorites;
+          const read = store.get("favoriteAddresses");
+          read.onsuccess = () => {
+            const previous = (read.result?.value ?? []).filter(validFavorite);
+            const exists = previous.some(
+              (item) => addressKey(item) === addressKey(place),
+            );
+            favorites = exists
+              ? previous.filter(
+                  (item) => addressKey(item) !== addressKey(place),
+                )
+              : [...previous, place];
+            store.put({ id: "favoriteAddresses", value: favorites });
+          };
+          tx.oncomplete = () => resolve(favorites);
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error);
+        });
+      } finally {
+        db.close();
+      }
+    },
     getHandicapProvider: async () =>
       (
         await operation("settings", "readonly", (store) =>

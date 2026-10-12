@@ -1062,3 +1062,176 @@ h4 {
 .pdf-page {
   max-width: none;
 }
+/* Planning is the application surface, without a separate page frame. */
+.planner-screen {
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  min-height: 100dvh;
+  grid-template-columns: 390px minmax(0, 1fr);
+  overflow: visible;
+}
+.planner-panel {
+  padding: 28px 28px 24px;
+  background: #fff;
+}
+.planner-panel > .brand {
+  margin-bottom: 36px;
+}
+.planner-map {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  min-height: 100dvh;
+}
+.coordination-screen {
+  min-height: 100dvh;
+}
+.address-group-title {
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--muted);
+  padding: 8px 12px 4px;
+  letter-spacing: 0.03em;
+}
+.address-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: stretch;
+  margin: 2px 4px;
+  border-radius: 6px;
+}
+.address-cell {
+  min-width: 0;
+  border-radius: 6px;
+}
+.address-cell[aria-selected="true"],
+.address-row:has(.address-choice:hover) {
+  background: #edf3ff;
+}
+.address-choice {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  border-radius: 6px;
+  min-height: 44px;
+}
+.address-choice strong {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.address-choice span {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.favorite-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.favorite-button {
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: #65738a;
+  min-width: 40px;
+  min-height: 44px;
+  font-size: 23px;
+  line-height: 1;
+  cursor: pointer;
+}
+.favorite-button[aria-pressed="true"] {
+  color: var(--accent);
+}
+.favorite-button:hover {
+  background: #edf3ff;
+  color: var(--accent);
+}
+.place-options[role="grid"] {
+  top: calc(100% + 5px);
+  max-height: 300px;
+  padding: 4px 0 6px;
+  box-shadow: 0 8px 24px #202c3e18;
+  border-color: var(--line);
+}
+.journey-marker {
+  background: none !important;
+  border: 0 !important;
+}
+.journey-marker span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font:
+    700 14px Inter,
+    Arial,
+    sans-serif;
+  box-shadow: 0 2px 6px #202c3e40;
+  position: relative;
+}
+.journey-marker span::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 10px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid #fff;
+}
+.marker-destination span {
+  background: #fff;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.marker-destination span::after {
+  border-top-color: var(--accent);
+}
+@media (max-width: 1000px) {
+  .planner-screen {
+    grid-template-columns: 350px minmax(0, 1fr);
+  }
+  .planner-panel {
+    padding: 24px;
+  }
+}
+@media (max-width: 700px) {
+  .planner-screen {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    display: flex;
+    min-height: 100dvh;
+  }
+  .planner-panel {
+    padding: 22px 24px;
+  }
+  .planner-panel > .brand {
+    margin-bottom: 26px;
+  }
+  .planner-map {
+    position: relative;
+    top: auto;
+    height: 340px;
+    min-height: 340px;
+  }
+  .place-options[role="grid"] {
+    max-height: 240px;
+  }
+  .coordination-topbar .brand {
+    font-size: 18px;
+  }
+}

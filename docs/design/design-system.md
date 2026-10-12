@@ -37,3 +37,13 @@ Mødeinterval er 15 minutter som standard, eller 30 efter brugerens valg. Mødet
 Stationskomponenten (`station-select.js`) bruger stationers ID, navn og koordinater. Eksempeldata findes separat i `stations.js`. Automatisk bestemte og tidligere gemte stationer uden for datasættet bevares som valgbare værdier. Adresse-autocomplete er uafhængig. Stationsredigering efter registrering af aftaler er spærret, så aftaler ikke flyttes til en anden station ved et uheld.
 
 Dokumentoriginaler opbevares som ArrayBuffer i IndexedDB med journeyId. Henvisning og bytes erstattes eller fjernes i samme transaktion. PDF læses med [PDF.js](https://github.com/mozilla/pdf.js), DOCX med [docx-preview](https://github.com/VolodymyrBaydalka/docxjs). Bibliotekerne indlæses først ved brug. DOCX vises i en iframe uden scripts og med en Content Security Policy, der blokerer eksterne ressourcer. PDF-worker leveres med appens offentlige assets. Dokumenter over 20 MB afvises; DOCX må højst være 60 MB udpakket. Beskadigede eller adgangskodebeskyttede dokumenter giver en læsbar fejl; originalen kan stadig hentes. Browsergengivelse af Word-layout kan afvige fra Word.
+
+## Integreret planlægningsflade og adressefavoritter
+
+Planlægningen fylder skærmen uden ydre kortkant, sidemargin eller separat header. Logoet sidder i formularområdet. Desktop har formular til venstre og et fast kort til højre; mobil placerer kortet efter formularen. Rejseoversigtens logo ligger i den eksisterende kompakte navigation.
+
+Adresseforslag vises i en combobox med grid-popup, fordi adressens valg og favoritknappen er to selvstændige handlinger. Piletaster og Enter vælger adresser; Tab giver adgang til stjernerne, og Escape lukker popupen. Musevalg beholder fokus i feltet ved mousedown, mens touch bevarer scrolling og vælger på click. Fokus uden for komponenten og klik udenfor lukker straks og annullerer åbne opslag; ingen blur-forsinkelse bruges.
+
+Favoritter er brugerens eksplicitte valg og gemmes som komplette adresseobjekter i IndexedDB-indstillingen `favoriteAddresses`. Der oprettes ingen søgehistorik. Samme favoritter bruges i begge felter, står i en særskilt sektion, og overlap med søgeresultater fjernes efter stabil adresseidentifikation. Favoritter kan vælges uden geocoder-netværksadgang.
+
+Kortmarkører er Leaflet-divIcons, så ingen PNG-stier er nødvendige. A er afgang med blå fyldning; B er destination med hvid fyldning og blå kant. Retningen sendes separat til kortet, så en destination uden afgang stadig får B. Popuptekst indsættes som tekst, ikke HTML.

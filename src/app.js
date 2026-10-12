@@ -47,14 +47,11 @@ export function mountApp(
   };
   root.innerHTML = `
     <div class="site-shell">
-      <header class="site-header">
-        <a class="brand" href="./" aria-label="RejseFlex forside"><span class="brand-mark" aria-hidden="true">↗</span><span>RejseFlex</span></a>
-        <span class="header-tag">UOFFICIEL</span>
-      </header>
       <main>
         <section class="planner-screen" aria-label="Planlæg rejse">
           <div class="planner-map" id="address-map" role="region" aria-label="Interaktivt kort over valgte steder"></div>
           <div class="planner-panel">
+            <a class="brand" href="./" aria-label="RejseFlex forside"><span class="brand-mark" aria-hidden="true">↗</span><span>RejseFlex</span></a>
             <span class="eyebrow">DIN REJSE, TRIN FOR TRIN</span>
             <h1>Planlæg rejse</h1>
             <p class="planner-intro">Få overblik over handicapkørsel, tog og assistance på din rejse.</p><p class="planner-demo">Demo · illustrative togtider</p>
@@ -72,7 +69,7 @@ export function mountApp(
           </div>
         </section>
         <div class="coordination-screen" hidden>
-          <div class="coordination-topbar"><button type="button" data-back-to-planner>← Ret søgning</button><span>Rejseoversigt</span></div>
+          <div class="coordination-topbar"><a class="brand" href="./" aria-label="RejseFlex forside"><span class="brand-mark" aria-hidden="true">↗</span><span>RejseFlex</span></a><button type="button" data-back-to-planner>← Ret søgning</button></div>
           <section id="saved-journeys" aria-live="polite"></section>
           <section id="result" class="result" aria-live="polite" hidden></section>
         </div>
@@ -273,7 +270,7 @@ export function mountApp(
         .catch(showStorageError);
   });
   void showSavedJourneys();
-  bindAddressSearch(root, selected, geocoder, map);
+  bindAddressSearch(root, selected, geocoder, map, journeyStore);
   root.querySelector("form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;

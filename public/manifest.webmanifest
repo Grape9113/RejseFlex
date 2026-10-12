@@ -1,7 +1,7 @@
 {
   "name": "RejseFlex Demo",
   "short_name": "RejseFlex",
-  "description": "Uofficiel demoguide til handicapkørsel, tog og Handicapservice",
+  "description": "Demoguide til handicapkørsel, tog og Handicapservice",
   "start_url": "/RejseFlex/",
   "scope": "/RejseFlex/",
   "display": "standalone",

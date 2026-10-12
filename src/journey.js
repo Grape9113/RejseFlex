@@ -1,4 +1,5 @@
 // Public journey seam: a wish and replaceable sources yield one provisional demo plan.
+import { copenhagenInstant } from './journey-details.js';
 import { resolveHandicapTrip } from './handicap-booking.js';
 import { classifyTripGeography } from './handicap-geography.js';
 import { demoRules, demoTaskGuidance, demoConflictGuidance, evaluateRules } from './rules.js';
@@ -6,7 +7,8 @@ export function createDemoTrainSource({ stationSource } = {}) {
   return {
     async findConnections(wish, { beforeArrival } = {}) {
       const isDeparture = wish.timeMode === 'departure' && !beforeArrival;
-      const anchor = new Date(beforeArrival ?? (isDeparture ? wish.departure : wish.arrival)).getTime();
+      const anchorValue = beforeArrival ?? (isDeparture ? wish.departure : wish.arrival);
+      const anchor = Date.parse(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(anchorValue) ? copenhagenInstant(anchorValue) : anchorValue);
       const trainDeparture = new Date(anchor + (isDeparture ? 90 : -180) * 60_000).toISOString();
       const trainArrival = new Date(anchor + (isDeparture ? 180 : -90) * 60_000).toISOString();
       const [fromStation, toStation] = stationSource ? await Promise.all([stationSource.nearby(wish.from.coordinates), stationSource.nearby(wish.to.coordinates)]) : [null, null];

@@ -4,8 +4,8 @@ Implementeringen følger GitHub Issue #15. Der er ingen ændringer af takstdata;
 
 ## Automatiske kontroller
 
-- `npm test`: 51 beståede tests. De eksisterende domænetests for geografi, takster, bookingafhængigheder og faste aftaler er bevaret. UI-assertions for fire kort og beregnede priser er opdateret til de nye krav.
-- Nye tests i `tests/journey-management.test.js` dækker tre rejseben, manuelle priser inkl. nul som eksplicit pris, delsum/total, validering, mødeinterval, midnat og dansk sommertid, IndexedDB-genåbning, originaldokumenter, erstatning/sletning, rollback ved fejlet transaktion, søgbart stationsvalg inkl. ældre stationer, automatisk stationsvalg og eksplicit redigering af bekræftede tider.
+- `npm test`: 52 beståede tests i både dansk tidszone og UTC. De eksisterende domænetests for geografi, takster, bookingafhængigheder og faste aftaler er bevaret. UI-assertions for fire kort og beregnede priser er opdateret til de nye krav.
+- Nye tests i `tests/journey-management.test.js` dækker tre rejseben, manuelle priser inkl. nul som eksplicit pris, delsum/total, validering, mødeinterval, midnat, dansk sommertid og tidszoneuafhængige togforslag, IndexedDB-genåbning, originaldokumenter, erstatning/sletning, rollback ved fejlet transaktion, søgbart stationsvalg inkl. ældre stationer, automatisk stationsvalg og eksplicit redigering af bekræftede tider.
 - `npm run verify:deploy`: produktionsbuild og afgrænsning af offentlige assets består. PDF-workeren leveres som offentlig JavaScript-modul; dokumenter og testfixtures indgår ikke i buildet.
 - `git diff --check` og `npm audit --omit=dev`: ingen fejl eller kendte produktionssårbarheder ved kontrollen.
 

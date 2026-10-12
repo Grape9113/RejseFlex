@@ -51,6 +51,7 @@ export function meetingTime(plan) {
     : null;
 }
 export function localDateTime(value) {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value;
   if (!value || !Number.isFinite(Date.parse(value))) return "";
   // datetime-local must show Copenhagen wall time even when the stored value is UTC.
   const parts = new Intl.DateTimeFormat("sv-SE", {

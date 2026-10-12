@@ -5,6 +5,7 @@ import {
   priceSummary,
   meetingTime,
   localDateTime,
+  copenhagenInstant,
 } from "./journey-details.js";
 export function placeName(place) {
   return place?.label ?? place?.name ?? "Ukendt sted";
@@ -16,6 +17,13 @@ export function element(document, tag, className, text) {
   return node;
 }
 function dateTime(value) {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+    try {
+      value = copenhagenInstant(value);
+    } catch {
+      return "Tidspunkt mangler";
+    }
+  }
   return value && Number.isFinite(Date.parse(value))
     ? new Intl.DateTimeFormat("da-DK", {
         dateStyle: "short",

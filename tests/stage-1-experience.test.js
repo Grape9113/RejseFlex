@@ -9,7 +9,7 @@ const places = {
   Slut: { id: 'end', label: 'Destinationsadresse', coordinates: { latitude: 56.1, longitude: 10.2 } },
 };
 const train = (id, arrival) => ({ id, fromStation: { id: 'a', name: 'A' }, toStation: { id: 'b', name: 'B' }, plannedDeparture: '2026-10-02T10:00:00Z', plannedArrival: arrival });
-const pickup = new Date('2026-10-02T13:00').getTime();
+const pickup = new Date('2026-10-02T13:00:00+02:00').getTime();
 const trains = [train('later', new Date(pickup + 30 * 60_000).toISOString()), train('earlier', new Date(pickup - 30 * 60_000).toISOString())];
 const source = { async findConnections() { return trains; } };
 const saved = new Map();

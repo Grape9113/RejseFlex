@@ -320,3 +320,9 @@ test("UI changes persist and reopen via the real IndexedDB store; suspended fare
   );
   assert.match(root2.querySelector(".price-summary").textContent, /125,50/);
 });
+
+test("demo train anchor and legacy local wishes use Copenhagen time independently of device timezone", async () => {
+  const [train] = await createDemoTrainSource().findConnections(wish);
+  assert.equal(train.plannedDeparture, "2026-10-20T09:00:00.000Z");
+  assert.equal(localDateTime("2026-10-20T14:00"), "2026-10-20T14:00");
+});

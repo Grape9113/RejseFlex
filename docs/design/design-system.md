@@ -14,7 +14,7 @@ Spacing-skalaen er 4, 8, 12, 16, 24 og 32 px (`--space-1` til `--space-6`). Stan
 
 ## Layout og komponenter
 
-Planlægning har maksimalt 1200 px bredde, rejseoversigten 1120 px. Desktop viser formular og kort ved siden af hinanden. Under 700 px kommer kortet efter formularen. Rejsetrin vises i fire kolonner, to under 1000 px og én under 440 px. Tekst og kildeoplysninger må bryde linjer og aldrig skjules for at passe i et kort.
+Planlægning har maksimalt 1200 px bredde, rejseoversigten 1120 px. Desktop viser formular og kort ved siden af hinanden. Under 700 px kommer kortet efter formularen. Indtastning og overblik har en indre bredde på højst 960 px. Tidslinjen er lodret; billet- og dokumentadgang vises i tre kolonner på desktop og to dokumentknapper under billetmarkeringen på mobil. Tekst og kildeoplysninger må bryde linjer og aldrig skjules for at passe i et kort.
 
 Primære knapper bruger blå baggrund, sekundære handlinger hvid baggrund og kant. Felter har mindst 44 px højde, permanent label og tydelig fokusmarkering. Næste handling bruger en hvid flade med en smal blå kant. Forbehold, konflikter, gemte rejser og bookingafsnit bruger de samme afstande og kanter.
 
@@ -28,7 +28,7 @@ Kontrollér planlægning, adresseforslag, rejseoversigt, gemte rejser, bookingtr
 
 ## Rejseoversigt og personlige oplysninger
 
-Rejseoversigten viser tre rejseben i én lodret tidslinje. Handicapservice er integreret i togbenet med selvstændige bookingkontroller. Gemte rejser, stationsredigering, kilder og kontroloplysninger kan udfoldes. Der er ingen særskilte bookingpaneler under tidslinjen.
+Rejseoverblikket viser fem hændelser: første transportben, Handicapservice-fremmøde, togafgang, togankomst og sidste transportben. Kun kendte og beregnede tider vises. Manglende tider samles i én diskret status. Billetform og dokumentadgang ligger før tidslinjen; bestillingsstatus og priser ligger efter den. Overblikket har ingen formularfelter, bookingmutationer eller inline-redigering.
 
 Manuelle udgifter gemmes som heltal i øre i `manualPrices`, uafhængigt af `priceEstimate`. Manglende værdier udelades. Vis kun "Samlet pris", når alle tre priser er registreret; ellers "Registrerede udgifter". Takstmodulerne bevares, men appens planlægning bruger `calculatePrices: false`.
 
@@ -51,12 +51,14 @@ Kortmarkører er Leaflet-divIcons, så ingen PNG-stier er nødvendige. A er afga
 Selvtransport vælges uafhængigt på første og sidste handicapkørselsben og er fravalgt som standard. Tilvalget opfylder det pågældende bookingkrav, uden at ændre registrerede eksterne aftaler, tider eller manuelle priser. Fravalg genindfører bookingkravet. Togvalg og Handicapservice beholder deres egne kontroller.
 
 
-## Tre faser og bevidst redigering
+## Tre skærme og bevidst redigering
 
-Rutevalget bevarer adressefelter, kort og stationsvælger. Den manuelle stationsvælger er fortsat udfoldet fra start. Efter rutevalget åbner en samlet indtastning af rejseoplysninger. Gemte rejser åbner altid i overblik.
+Planlægningsskærmen bevarer adressefelter, kort, trafikselskab, dato, ønsket tidspunkt og stationsvælger. Den manuelle stationsvælger er fortsat udfoldet fra start. Der er ingen importknap på denne skærm. Rutevalg åbner indtastningsskærmen; gemte rejser åbner overblik.
 
-Overblikket følger første transportben, Handicapservice-fremmøde, togafgang og togankomst samt sidste transportben. Tider og registrerede priser vises som tekst. Dokumenterne følger efter rejsekæden, så bilag ikke afbryder kronologien. Bookingvejledning og frister kan udfoldes; bekræftelse af eksterne aftaler er fortsat særskilt.
+Indtastningsskærmen har fire sektioner i rejserækkefølge: første handicapkørsel, tog og Handicapservice, sidste handicapkørsel samt billetter og rejsedokumenter. Klokkeslætsfelter er kompakte og bruger rejsedatoen. Ved faldende klokkeslæt håndteres midnat; ved ønsket ankomst er sidste rejsedag anker, ved ønsket afgang er første rejsedag anker. En udfoldelig datokorrektion findes ved hvert tidspunkt. Tider normaliseres til Copenhagen-instanter gennem den eksisterende sommertidsvalidering. Beregnet Handicapservice-fremmøde opdateres live.
 
-En samlet »Rediger rejseoplysninger«-handling åbner lokale formularværdier for alle fire tider, priser, selvtransport og 15/30 minutters fremmøde. Gemning validerer alle oplysninger før én lokal lagring. Annullering fjerner formularen uden at ændre rejseplanen. Manglende afhentning eller togtider har en handling til at tilføje oplysninger. Ingen tider eller priser kræves for selvtransport. Eksisterende registrerede aftaler og priser bevares ved tilvalg af selvtransport.
+Billetformen er en tastaturbetjenbar segmented control med DSB og Rejsekort. Ingen knap åbner disse apps, og der antages intet valg. Kørestolspladsbillet er PDF; rejse-/assistanceplan kan være DOCX eller PDF. Dokumenter kan tilføjes, åbnes, udskiftes, hentes eller fjernes her. Upload og bookingbekræftelser ændrer kun kladden indtil »Gem og vis rejseoverblik«. Alle rejsefelter, dokumenthenvisninger og ændrede originalbytes gemmes i én IndexedDB-transaktion. Annullering bevarer den gemte rejse, også efter redigering af planlægningen.
 
-Der er ingen ny databaseversion. Togtider bruger de eksisterende `plannedDeparture`/`plannedArrival`; afhentninger bruger `actualBookingTime` i rejseben og opgaver. `manualTrainTimes` markerer, at tiderne er brugerens oplysninger, så demogenberegning ikke erstatter dem. Nye rejser fra demokilden starter med tomme togtider. Gamle rejser uden markøren åbnes som hidtil med tydeligt demoforbehold. Bookingkontroller kræver stadig de eksisterende afhængigheder og særskilt Handicapservice-bekræftelse.
+Overblikket er skrivebeskyttet. »Rediger rejseoplysninger« åbner skærm 2; »Ret planlægning« fører til skærm 1 med tidligere oplysninger. Navigation tilbage til planlægning bevarer indtastningskladden og dens dokumenter. Den eksisterende spærring mod at flytte registrerede aftaler til andre stationer eller adresser respekteres. Eksterne bookingbekræftelser foretages særskilt på indtastningsskærmen med de eksisterende afhængigheder. Selvtransport kræver ingen afhentning eller pris og bevarer tidligere registrerede værdier.
+
+Ingen databaseopgradering er nødvendig. Tidspunkter og priser bruger de eksisterende felter. `ticketType` gemmes pr. rejse som `dsb`, `rejsekort` eller `null`, uafhængigt af `documentReferences`. `timeDateOverrides` indeholder kun eksplicitte datokorrektioner. `manualTrainTimes` beskytter oplyste togtider mod demogenberegning. Ældre rejser uden nye felter åbner med neutral billetstatus og bevarede tider/bilag. Eksternt modtagne importkladder kan fortsat genoptages; de er en hjælpefunktion til de tre primære skærme.

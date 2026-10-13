@@ -73,7 +73,7 @@ test('visningen bevarer bookingvejledning men viser ingen automatiske priser', a
   });
   const dom = new JSDOM('<div id="app"><section id="result"></section></div>');
   const root = dom.window.document.querySelector('#app');
-  renderJourney(root, plan, () => {}, () => {});
+  renderJourney(root, {...plan,selected:true}, () => {}, () => {});
   assert.equal(root.querySelector('[data-next-action]').dataset.bookingAction, 'CALL_FOR_CROSS_REGION_BOOKING');
   assert.doesNotMatch(root.querySelector('#result').textContent, /ca\. 93 kr/);
   assert.doesNotMatch(root.querySelector('#result').textContent, /ved onlinebestilling/);

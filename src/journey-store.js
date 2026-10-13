@@ -93,7 +93,7 @@ export function createJourneyStore(indexedDB = globalThis.indexedDB) {
     async completeImport(
       plan,
       document,
-      { expectedDocumentId = null, create = false } = {},
+      { expectedDocumentId = null, create = false, changes = [] } = {},
     ) {
       const db = await database();
       try {
@@ -153,6 +153,14 @@ export function createJourneyStore(indexedDB = globalThis.indexedDB) {
                   ],
                 };
                 documents.put({ ...document, journeyId: latest.id });
+                for (const change of changes) {
+                  if (change.document) documents.put(change.document);
+                  if (
+                    change.previousId &&
+                    change.previousId !== change.document?.id
+                  )
+                    documents.delete(change.previousId);
+                }
                 journeys.put(updated);
                 if (previous) documents.delete(previous.id);
               } catch (error) {
@@ -165,7 +173,7 @@ export function createJourneyStore(indexedDB = globalThis.indexedDB) {
         db.close();
       }
     },
-    async saveDocument(plan, document, previousId) {
+    async saveDocuments(plan, changes = []) {
       const db = await database();
       try {
         await new Promise((resolve, reject) => {
@@ -175,9 +183,11 @@ export function createJourneyStore(indexedDB = globalThis.indexedDB) {
           tx.onabort = () => reject(tx.error);
           try {
             tx.objectStore("journeys").put(plan);
-            if (document) tx.objectStore("documents").put(document);
-            if (previousId && previousId !== document?.id)
-              tx.objectStore("documents").delete(previousId);
+            for (const { document, previousId } of changes) {
+              if (document) tx.objectStore("documents").put(document);
+              if (previousId && previousId !== document?.id)
+                tx.objectStore("documents").delete(previousId);
+            }
           } catch (error) {
             tx.abort();
             reject(error);
@@ -186,6 +196,9 @@ export function createJourneyStore(indexedDB = globalThis.indexedDB) {
       } finally {
         db.close();
       }
+    },
+    async saveDocument(plan, document, previousId) {
+      return this.saveDocuments(plan, [{ document, previousId }]);
     },
     // Document references belong in a journey; file bytes remain in this local store.
     putDocument: (document) =>

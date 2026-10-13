@@ -243,7 +243,7 @@ test("overview has only three stages, no fare estimates, no price summary until 
     '<main id="app"><section id="result"></section></main>',
   );
   const root = dom.window.document.querySelector("#app");
-  const plan = await proposeJourney(wish);
+  const plan = {...await proposeJourney(wish), selected: true};
   plan.legs[0].priceEstimate = { kind: "known", estimatedPrice: 12345 };
   renderJourney(
     root,
@@ -320,7 +320,7 @@ test("UI changes persist and reopen via the real IndexedDB store; suspended fare
   root2.querySelector("[data-open-plan]").click();
   assert.match(
     root2.querySelector("[data-assistance-task]").textContent,
-    /30 minutter/,
+    /30 min/,
   );
   assert.match(root2.querySelector(".price-summary").textContent, /125,50/);
 });

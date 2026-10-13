@@ -18,6 +18,7 @@ test('selected journey wish yields a demo chain and explained next action', asyn
   };
   const queries = [];
   mountApp(root, {
+    journeyStore: {list:async()=>[],save:async()=>{}},
     geocoder: { search: async (query) => query === 'Søndersø' ? [from] : [to] },
     trainSource: { findConnections: async (wish) => { queries.push(wish); return [train]; } },
   });
@@ -41,11 +42,11 @@ test('selected journey wish yields a demo chain and explained next action', asyn
   assert.equal(root.querySelectorAll('[data-journey-section]').length, 3);
   assert.match(root.querySelector('#result').textContent, /Odense St\./);
   assert.match(root.querySelector('#result').textContent, /Aarhus H/);
-  assert.match(root.querySelector('#result').textContent, /12[.:]30/);
-  assert.match(root.querySelector('[data-next-action]').textContent, /sidste handicapkørsel/i);
-  assert.match(root.querySelector('[data-next-action]').textContent, /registrér.*afhentningstid/i);
+  assert.equal(root.querySelector('[data-detail-time="arrival"]').value, "12:30");
+  assert.match(root.querySelector('[data-edit-section="inbound"]').textContent, /ikke bekræftet bestilt/);
   assert.match(root.querySelector('#result').textContent, /Demo/);
   assert.ok(root.querySelector('[data-select-plan]'));
   root.querySelector('[data-select-plan]').click();
+  await new Promise(resolve=>setTimeout(resolve,0));
   assert.match(root.querySelector('[data-next-action]').textContent, /sidste handicapkørsel/i);
 });

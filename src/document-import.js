@@ -229,7 +229,7 @@ export function bindDocumentImport(
     await remember({ draftPlan: attached, step: "review" });
     return attached;
   }
-  async function completeNew(plan) {
+  async function completeNew(plan, changes = []) {
     const record = pending,
       doc = importedDocument(record, plan.id);
     // The draft reference is a preview, not a previously saved document.
@@ -239,9 +239,11 @@ export function bindDocumentImport(
         (ref) => ref.id !== doc.id,
       ),
     };
-    const saved = await journeyStore.completeImport(cleanPlan, doc, {
-      create: true,
-    });
+    // The user may have deliberately removed/replaced the imported preview in screen 2.
+    const keepImported = plan.documentReferences?.some(ref => ref.id === doc.id);
+    const saved = keepImported
+      ? await journeyStore.completeImport(cleanPlan, doc, { create: true, changes })
+      : (await journeyStore.saveDocuments(plan, changes), plan);
     pending = { ...record, mode: "completed" };
     try {
       await clean(record);
@@ -365,7 +367,7 @@ export function bindDocumentImport(
         root.querySelector("[data-select-plan]")
       )
         root.querySelector("[data-select-plan]").textContent =
-          "Gem rejse og importér bilag";
+          "Gem og vis rejseoverblik";
     },
     async back() {
       if (pending?.mode === "new") await remember({ step: "planning" });

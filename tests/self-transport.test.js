@@ -142,10 +142,11 @@ test("checkboxes are independent, persist through app reload, hide booking contr
     () => first.root.querySelectorAll("[data-self-transport]").length === 0,
   );
   assert.equal(first.root.querySelector("[data-booking-time]"), null);
-  assert.ok(first.root.querySelector("[data-confirm-train]"));
+  assert.equal(first.root.querySelector("[data-confirm-train]"), null);
+  assert.match(first.root.querySelector(".booking-overview").textContent, /Ikke kontrolleret/);
   assert.match(
     first.root.querySelector("#result").textContent,
-    /Du sørger selv/,
+    /Selvtransport/,
   );
   const second = setup();
   await until(() => second.root.querySelector("[data-open-plan]"));

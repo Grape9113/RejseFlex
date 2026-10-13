@@ -25,7 +25,7 @@ test('from journey wish to a clearly marked demo journey', async () => {
   assert.equal(root.querySelectorAll('[data-journey-section]').length, 3);
   assert.deepEqual(
     [...root.querySelectorAll('[data-journey-section] h3')].map((heading) => heading.textContent),
-    ['Handicapkørsel til stationen', 'Togrejse & DSB Handicapservice', 'Handicapkørsel til destinationen'],
+    ['Handicapkørsel til stationen', 'Togrejse og DSB Handicapservice', 'Handicapkørsel fra stationen'],
   );
   assert.match(root.textContent, /bestiller ikke/i);
 });

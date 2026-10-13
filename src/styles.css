@@ -1405,3 +1405,472 @@ h4 {
     gap: 16px 28px;
   }
 }
+
+/* Three distinct screens: compact editing and a read-only travel guide. */
+#result {
+  max-width: 960px;
+  margin-inline: auto;
+}
+.journey-phases {
+  display: flex;
+  gap: 20px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.journey-phases .current {
+  color: var(--accent);
+  font-weight: 700;
+}
+.compact-journey-header {
+  margin-bottom: 16px;
+}
+.compact-journey-header h2 {
+  font-size: 24px;
+  margin: 0 0 4px;
+}
+.journey-route-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 14px;
+}
+.journey-route-title > :not(.route-arrow) {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.journey-date {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 6px 0;
+}
+.journey-icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+.journey-details-editor {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  margin: 0;
+}
+.edit-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+.edit-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  margin: 0;
+}
+.edit-section h3 .journey-icon {
+  color: var(--accent);
+}
+.edit-route {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 12px 32px;
+}
+.self-choice {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-weight: 550;
+  font-size: 13px;
+}
+.journey-details-editor .self-choice input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+.edit-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 190px));
+  gap: 12px 20px;
+  align-items: start;
+}
+.edit-fields .field,
+.edit-assistance .field {
+  margin: 0;
+  gap: 4px;
+  font-size: 12px;
+}
+.edit-fields input {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+}
+.clock-field {
+  min-width: 0;
+}
+.date-toggle {
+  padding: 2px 0;
+  min-height: 28px;
+  margin: 0 !important;
+  font-size: 11px;
+}
+.date-correction {
+  margin-top: 4px;
+}
+.date-correction .text-button {
+  font-size: 11px;
+}
+.self-note {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+.edit-booking {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.edit-booking .text-button {
+  padding: 0 4px;
+  min-height: 32px;
+  margin: 0;
+}
+.booking-state {
+  color: var(--muted);
+}
+.edit-assistance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+.edit-assistance select {
+  width: 170px;
+}
+.meeting-preview {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ticket-choice {
+  border: 0;
+  padding: 0;
+  margin: 12px 0;
+}
+.ticket-choice legend {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.ticket-choice .segmented-control {
+  display: inline-flex;
+}
+.ticket-choice .segment {
+  min-width: 100px;
+  min-height: 44px;
+}
+.ticket-choice .muted {
+  margin: 4px 0 0;
+}
+.edit-document {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.edit-document > div:first-child {
+  display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.edit-document strong {
+  font-size: 13px;
+}
+.edit-document .document-actions {
+  flex: 0 0 auto;
+}
+.edit-document button {
+  margin: 0;
+}
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 8px;
+}
+.editor-actions button {
+  margin: 0;
+}
+.editor-actions .select-plan {
+  min-height: 44px;
+}
+.demo-footnote {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 12px 0;
+}
+.overview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.journey-quick-access {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.quick-ticket {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.quick-ticket .journey-icon {
+  color: var(--accent);
+}
+.quick-ticket > div,
+.quick-document {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+.quick-ticket strong,
+.quick-document strong {
+  font-size: 13px;
+}
+.quick-document {
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+.document-open {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  min-height: 44px;
+  width: fit-content;
+}
+.document-name {
+  overflow-wrap: anywhere;
+}
+.journey-quick-access .action-feedback {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.journey-quick-access .action-feedback:empty {
+  display: none;
+}
+.missing-summary {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--line);
+  margin: 0 0 12px;
+}
+.travel-events {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.travel-event {
+  position: relative;
+  display: grid;
+  grid-template-columns: 86px 36px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 20px;
+}
+.travel-event + .travel-event {
+  border-top: 1px solid var(--line);
+}
+.event-time {
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.event-time small {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 4px;
+  color: var(--muted);
+}
+.unlisted-time {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 500;
+}
+.event-marker {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #edf3ff;
+  color: var(--accent);
+}
+.event-content h3 {
+  font-size: 15px;
+  margin: 0 0 3px;
+  font-weight: 650;
+}
+.event-content p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+.booking-overview {
+  margin: 16px 0;
+}
+.booking-overview h3 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.booking-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 20px;
+}
+.booking-overview h3 {
+  grid-column: 1 / -1;
+}
+.booking-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 12px;
+}
+.booking-summary strong {
+  font-weight: 550;
+}
+.confirmed-status {
+  color: #286343;
+}
+.overview-prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+.overview-prices .price-summary {
+  font-size: 13px;
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  border: 0;
+  background: none;
+}
+.journey-checks {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 699px) {
+  .edit-section {
+    padding: 14px;
+  }
+  .edit-route {
+    margin-left: 0;
+  }
+  .edit-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+  .edit-fields input,
+  .edit-assistance select {
+    font-size: 16px;
+  }
+  .edit-document {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .edit-document .document-actions {
+    flex-wrap: wrap;
+  }
+  .journey-quick-access {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+  .quick-ticket {
+    grid-column: 1 / -1;
+  }
+  .quick-document {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 10px 0 0;
+  }
+  .document-open {
+    font-size: 12px;
+    padding: 8px;
+    width: 100%;
+  }
+  .document-open .journey-icon {
+    width: 18px;
+    height: 18px;
+    flex-basis: 18px;
+  }
+  .travel-event {
+    grid-template-columns: 66px 28px minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px;
+  }
+  .event-marker {
+    width: 28px;
+    height: 28px;
+  }
+  .event-marker .journey-icon {
+    width: 18px;
+    height: 18px;
+  }
+  .event-time {
+    font-size: 21px;
+  }
+  .booking-overview {
+    grid-template-columns: 1fr;
+  }
+  .event-content h3 {
+    font-size: 14px;
+  }
+  .event-content p {
+    font-size: 12px;
+  }
+}

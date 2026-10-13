@@ -32,3 +32,12 @@ Word-layout kan variere i browseren. Beskadigede eller adgangskodebeskyttede fil
 - `npm run verify:deploy` kontrollerer produktionsbuild og offentlige assets. Projektet har ingen lint-script eller lint-konfiguration; JavaScript kontrolleres med `node --check` og ændringer med `git diff --check`.
 
 Dokumentlæser/import og stationsselektion er genbrugt uden ændringer. Eksterne aftaler og faktiske forbindelser kontrolleres fortsat af brugeren; Rejseplanens API er ikke integreret.
+
+
+## Redesign af tre skærme — Issue #20
+
+- Nye tests i `tests/three-screens.test.js` dækker hele det almindelige flow, bevarede ruteoplysninger/kladder, alle billetvalg, klokkeslætsindtastning over midnat i både afgangs- og ankomsttilstand, datokorrektion og sommertid. De dækker også alle fire kombinationer af selvtransport, uafhængige bookingbekræftelser, atomisk lagring af begge dokumenttyper, erstatning, annullering, genåbning og rollback ved transaktionsfejl.
+- Eksisterende UI-tests er tilpasset den nye informationsarkitektur: bookingbekræftelser udføres bevidst på skærm 2 og gemmes med rejsen. Domænetests og station-/adresse-/korttests bevares.
+- Lokal browserkontrol ved 1280×900 og 390×844: planlægning uden importknap; fire kompakte indtastningsområder; separat billetvalg; fem tidslinjehændelser uden inputfelter; dokumentadgang før tidslinjen; ingen vandret overflow. En syntetisk PDF blev vist med to sider, og en DOCX blev vist med tekst og tabel. Testbilag bruger `tests/fixtures/documents.js` og har ingen personlige oplysninger.
+- Automatiseret kontrol: 85 tests består med `npm test` i Europe/Copenhagen og UTC. Derudover består `npm run verify:deploy`, `node --check` og `git diff --check`. Projektet har ingen separat lint-kommando.
+- Den afsluttende GitHub Pages-kontrol registreres med commit, workflow og browserresultater på Issue #20 efter publicering. Den skal gentage alle tre skærme, navigation, lagring, billetmarkeringer og faktisk åbning/udskiftning af PDF og DOCX på den offentlige adresse.

@@ -238,21 +238,15 @@ test("new-journey import survives navigation/reload and saves no journey until e
   await wait(
     () =>
       first.root.querySelector("[data-select-plan]")?.textContent ===
-      "Gem rejse og importér bilag",
+      "Gem og vis rejseoverblik",
   );
   assert.equal((await store.list()).length, 0);
   assert.match(first.root.querySelector("#result").textContent, /billet.pdf/);
-  first.root.querySelector("[data-edit-details]").click();
-  first.root.querySelector(".journey-details-editor select").value = "30";
-  first.root.querySelector("[data-save-details]").click();
-  await wait(
-    async () =>
-      (await imports.get(record.id))?.draftPlan?.assistanceInterval === 30,
-  );
-  assert.equal((await store.list()).length, 0);
+  // Reload the staged import before the primary save; no journey has been saved yet.
   const second = setup(`#import=${record.id}`);
-  await wait(() => second.root.querySelector("[data-select-plan]"));
-  second.root.querySelector("[data-select-plan]").click();
+  await wait(() => second.root.querySelector("[data-save-details]"));
+  second.root.querySelector(".journey-details-editor select").value = "30";
+  second.root.querySelector("[data-save-details]").click();
   await wait(async () => (await store.list()).length === 1);
   const [plan] = await store.list();
   assert.equal(plan.assistanceInterval, 30);

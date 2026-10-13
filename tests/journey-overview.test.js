@@ -145,8 +145,8 @@ test("partial legacy journey supports cancel and atomic save through the actual 
   await until(() => root.querySelector("[data-open-plan]"));
   root.querySelector("[data-open-plan]").click();
   assert.match(
-    root.querySelector(".train-times").textContent,
-    /Tidspunkt mangler/,
+    root.querySelector(".missing-summary").textContent,
+    /togankomst|togafgang/,
   );
   assert.deepEqual(
     [...root.querySelectorAll("[data-stage]")].map((n) => n.dataset.stage),
@@ -154,14 +154,14 @@ test("partial legacy journey supports cancel and atomic save through the actual 
   );
   root.querySelector("[data-edit-details]").click();
   root.querySelector('[data-detail-time="departure"]').value =
-    values.times.departure;
+    values.times.departure.slice(11);
   root.querySelector("[data-cancel-details]").click();
   assert.equal((await store.list())[0].legs[1].plannedDeparture, null);
   root.querySelector("[data-edit-details]").click();
   root.querySelector('[data-detail-time="outbound"]').value =
-    values.times.outbound;
+    values.times.outbound.slice(11);
   root.querySelector('[data-detail-time="departure"]').value =
-    values.times.departure;
+    values.times.departure.slice(11);
   root.querySelector('[data-manual-price="outbound"]').value = "50,50";
   root.querySelector("[data-save-details]").click();
   await until(() => root.querySelector(".journey-editor-host").hidden);
@@ -258,11 +258,11 @@ test("new route opens information entry with empty demo times and saves a partia
   );
   await tick();
   assert.equal(root.querySelector(".journey-editor-host").hidden, false);
-  assert.equal(root.querySelector("[data-select-plan]").hidden, true);
+  assert.equal(root.querySelector("[data-save-details]").textContent, "Gem og vis rejseoverblik");
   assert.equal(root.querySelector('[data-detail-time="departure"]').value, "");
   assert.equal(root.querySelector('[data-detail-time="arrival"]').value, "");
   root.querySelector('[data-detail-time="departure"]').value =
-    values.times.departure;
+    values.times.departure.slice(11);
   root.querySelector("[data-save-details]").click();
   await until(() => root.querySelector(".journey-editor-host").hidden);
   const [saved] = await store.list();
@@ -274,7 +274,7 @@ test("new route opens information entry with empty demo times and saves a partia
   );
   assert.equal(root.querySelector(".journey-editor-host").hidden, true);
   assert.match(
-    root.querySelector(".train-times").textContent,
-    /Tidspunkt mangler/,
+    root.querySelector(".missing-summary").textContent,
+    /togankomst|togafgang/,
   );
 });

@@ -7,14 +7,23 @@ const types = {
 };
 export async function prepareDocument(file, kind, journeyId) {
   const type = types[kind];
-  if (!type || !file.name.toLowerCase().endsWith(`.${type.extension}`))
+  const isPdf = file.name.toLowerCase().endsWith(".pdf");
+  if (
+    !type ||
+    !(
+      file.name.toLowerCase().endsWith(`.${type.extension}`) ||
+      (kind === "assistance" && isPdf)
+    )
+  )
     throw new Error(
-      `Vælg en ${type?.extension.toUpperCase() ?? "understøttet"}-fil.`,
+      kind === "assistance"
+        ? "Vælg en DOCX- eller PDF-fil."
+        : `Vælg en ${type?.extension.toUpperCase() ?? "understøttet"}-fil.`,
     );
   if (!file.size || file.size > 20 * 1024 * 1024)
     throw new Error("Dokumentet skal være mellem 1 byte og 20 MB.");
   const bytes = await file.arrayBuffer();
-  if (kind === "ticket") {
+  if (isPdf) {
     if (!new TextDecoder().decode(bytes.slice(0, 1024)).includes("%PDF-"))
       throw new Error("Filen er ikke en gyldig PDF.");
   } else {
@@ -40,7 +49,7 @@ export async function prepareDocument(file, kind, journeyId) {
     journeyId,
     kind,
     name: file.name,
-    mime: type.mime,
+    mime: isPdf ? "application/pdf" : type.mime,
     bytes,
     updatedAt: new Date().toISOString(),
   };
@@ -101,7 +110,10 @@ export async function openDocument(document, stored) {
   dialog.addEventListener("close", cleanup, { once: true });
   dialog.showModal();
   try {
-    if (stored.kind === "ticket") {
+    if (
+      stored.mime === "application/pdf" ||
+      stored.name.toLowerCase().endsWith(".pdf")
+    ) {
       const pdfjs = await import("pdfjs-dist");
       const { default: workerUrl } = await import(
         "pdfjs-dist/build/pdf.worker.min.mjs?url"

@@ -270,7 +270,7 @@ export function withJourneyDetails(plan, values) {
         ? copenhagenInstant(values.times[id])
         : null;
       const task = updated.tasks.find((item) => item.id === id);
-      if (task.confirmed && !time)
+      if (task.confirmed && task.actualBookingTime && !time)
         throw new Error(
           "En bekræftet afhentning kan ikke fjernes. Kontrollér aftalen hos trafikselskabet.",
         );

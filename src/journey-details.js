@@ -78,3 +78,52 @@ export function copenhagenInstant(value) {
     "Tidspunktet findes ikke i dansk sommertid. Vælg et andet tidspunkt.",
   );
 }
+
+export function journeyDate(plan) {
+  return (
+    (plan.wish.timeMode === "departure"
+      ? plan.wish.departure
+      : plan.wish.arrival
+    )?.slice(0, 10) ?? ""
+  );
+}
+function shiftDate(date, days) {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+// Resolve wall-clock times in travel order; an arrival wish anchors the last day.
+export function resolveJourneyTimes(
+  plan,
+  clocks,
+  dates = {},
+  selfManaged = {},
+) {
+  const base = journeyDate(plan);
+  const order = ["outbound", "departure", "arrival", "inbound"].filter(
+    (id) => clocks[id] && !selfManaged[id],
+  );
+  const backwards = plan.wish.timeMode !== "departure";
+  const sequence = backwards ? [...order].reverse() : order;
+  let date = base,
+    previous = null;
+  const resolved = Object.fromEntries(
+    ["outbound", "departure", "arrival", "inbound"].map((id) => [id, ""]),
+  );
+  for (const id of sequence) {
+    const clock = clocks[id];
+    if (!/^\d{2}:\d{2}$/.test(clock))
+      throw new Error("Angiv et gyldigt klokkeslæt.");
+    if (dates[id]) date = dates[id];
+    else if (
+      previous !== null &&
+      (backwards ? clock > previous : clock < previous)
+    )
+      date = shiftDate(date, backwards ? -1 : 1);
+    const value = `${date}T${clock}`;
+    copenhagenInstant(value); // Also rejects nonexistent Copenhagen daylight-saving times.
+    resolved[id] = value;
+    previous = clock;
+  }
+  return resolved;
+}

@@ -40,18 +40,20 @@ test('bruger kan bekræfte Handicapservice særskilt og genåbne den lokalt', as
   form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await tick(); root.querySelector('[data-select-plan]').click(); await tick();
-  assert.match(root.querySelector('[data-assistance-task]').textContent, /Mødetid.*11.45.*Bestillingsfrist.*kontrolleres/i);
+  assert.match(root.querySelector('#result').textContent, /11.45.*Handicapservice-frist.*kontrolleres/i);
   root.querySelector('[data-edit-details]').click();
-  root.querySelector('[data-detail-time="inbound"]').value = '2026-10-02T13:00';
-  root.querySelector('[data-detail-time="departure"]').value = '2026-10-02T12:00';
-  root.querySelector('[data-detail-time="arrival"]').value = '2026-10-02T12:30';
+  root.querySelector('[data-detail-time="inbound"]').value = '13:00';
+  root.querySelector('[data-detail-time="departure"]').value = '12:00';
+  root.querySelector('[data-detail-time="arrival"]').value = '12:30';
   root.querySelector('[data-save-details]').click(); await tick();
-  root.querySelector('[data-confirm-booking]').click(); await tick();
-  root.querySelector('[data-confirm-train]').click(); await tick();
-  root.querySelector('[data-confirm-assistance]').click(); await tick();
+  root.querySelector('[data-edit-details]').click();
+  root.querySelector('[data-confirm-booking]').click();
+  root.querySelector('[data-confirm-train]').click();
+  root.querySelector('[data-confirm-assistance]').click();
+  root.querySelector('[data-save-details]').click(); await tick();
   assert.equal([...saved.values()][0].tasks.find((task) => task.id === 'assistance').status, 'bestilt');
   root.querySelector('[data-open-plan]').click();
-  assert.match(root.querySelector('[data-assistance-task]').textContent, /bekræftet ekstern/i);
+  assert.match(root.querySelector('.booking-overview').textContent, /DSB HandicapserviceBestilling bekræftet/i);
 });
 
 test('samme tog-id med ændret afgang giver konflikt og bevarer bekræftede detaljer', async () => {

@@ -44,12 +44,14 @@ test('selected journey accepts time and separate confirmation, then persists upd
   await tick(); root.querySelector('[data-select-plan]').click(); await tick();
   root.querySelector('[data-edit-details]').click();
   assert.ok(root.querySelector('[data-detail-time="inbound"]'));
-  root.querySelector('[data-detail-time="inbound"]').value = '2026-10-02T12:00';
-  root.querySelector('[data-detail-time="departure"]').value = '2026-10-02T11:00';
-  root.querySelector('[data-detail-time="arrival"]').value = '2026-10-02T11:30';
+  root.querySelector('[data-detail-time="inbound"]').value = '12:00';
+  root.querySelector('[data-detail-time="departure"]').value = '11:00';
+  root.querySelector('[data-detail-time="arrival"]').value = '11:30';
   root.querySelector('[data-save-details]').click(); await tick();
   assert.match(root.querySelector('[data-next-action]').textContent, /bekræft/i);
   assert.equal([...saved.values()][0].tasks.find((task) => task.id === 'inbound').status, 'afventer brugerinput');
-  root.querySelector('[data-confirm-booking]').click(); await tick();
+  root.querySelector('[data-edit-details]').click();
+  root.querySelector('[data-confirm-booking]').click();
+  root.querySelector('[data-save-details]').click(); await tick();
   assert.equal([...saved.values()][0].tasks.find((task) => task.id === 'inbound').status, 'bestilt');
 });

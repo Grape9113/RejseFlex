@@ -33,6 +33,13 @@ const wish = {
   timeMode: "arrival",
   arrival: "2026-10-20T14:00",
 };
+async function until(predicate) {
+  const deadline = Date.now() + 3000;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error("UI state did not settle");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
 const tick = () => new Promise((resolve) => setTimeout(resolve, 15));
 
 test("manual prices and meeting interval survive reopening; absent prices are never zero", async () => {
@@ -287,12 +294,11 @@ test("UI changes persist and reopen via the real IndexedDB store; suspended fare
   form.dispatchEvent(
     new dom.window.Event("submit", { bubbles: true, cancelable: true }),
   );
-  await tick();
+  await until(() => root.querySelector("[data-select-plan]"));
   root.querySelector("[data-select-plan]").click();
-  await tick();
-  root.querySelector('[data-meeting-interval="30"]').click();
-  await tick();
-  root.querySelector('[data-price-action="train"]').click();
+  await until(() => !root.querySelector("[data-select-plan]"));
+  root.querySelector("[data-edit-details]").click();
+  root.querySelector(".journey-details-editor select").value = "30";
   const input = root.querySelector('[data-manual-price="train"]');
   input.value = "125,50";
   input
@@ -300,7 +306,7 @@ test("UI changes persist and reopen via the real IndexedDB store; suspended fare
     .dispatchEvent(
       new dom.window.Event("submit", { bubbles: true, cancelable: true }),
     );
-  await tick();
+  await until(() => root.querySelector(".journey-editor-host").hidden);
   const [saved] = await createJourneyStore(db).list();
   assert.equal(saved.assistanceInterval, 30);
   assert.equal(saved.manualPrices.train, 12550);
@@ -310,13 +316,11 @@ test("UI changes persist and reopen via the real IndexedDB store; suspended fare
   });
   const root2 = dom2.window.document.querySelector("#app");
   mountApp(root2, { journeyStore: createJourneyStore(db) });
-  await tick();
+  await until(() => root2.querySelector("[data-open-plan]"));
   root2.querySelector("[data-open-plan]").click();
-  assert.equal(
-    root2
-      .querySelector('[data-meeting-interval="30"]')
-      .getAttribute("aria-pressed"),
-    "true",
+  assert.match(
+    root2.querySelector("[data-assistance-task]").textContent,
+    /30 minutter/,
   );
   assert.match(root2.querySelector(".price-summary").textContent, /125,50/);
 });

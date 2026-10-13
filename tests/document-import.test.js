@@ -242,7 +242,9 @@ test("new-journey import survives navigation/reload and saves no journey until e
   );
   assert.equal((await store.list()).length, 0);
   assert.match(first.root.querySelector("#result").textContent, /billet.pdf/);
-  first.root.querySelector('[data-meeting-interval="30"]').click();
+  first.root.querySelector("[data-edit-details]").click();
+  first.root.querySelector(".journey-details-editor select").value = "30";
+  first.root.querySelector("[data-save-details]").click();
   await wait(
     async () =>
       (await imports.get(record.id))?.draftPlan?.assistanceInterval === 30,

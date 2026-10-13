@@ -16,6 +16,7 @@ import {
   proposeJourney,
   recordBookingTime,
   editBookingTime,
+  withJourneyDetails,
   withSelfTransport,
   confirmBooking,
   confirmAssistance,
@@ -215,7 +216,13 @@ export function mountApp(
       }
       if (
         importFlow.hasNew(base) &&
-        !["stations", "price", "interval", "self-transport"].includes(action)
+        ![
+          "stations",
+          "price",
+          "interval",
+          "self-transport",
+          "details",
+        ].includes(action)
       )
         throw new Error(
           "Gem rejsen, før du ændrer andre bilag eller bookinger.",
@@ -226,7 +233,14 @@ export function mountApp(
         selected: true,
       };
       let updated;
-      if (action === "stations") {
+      if (action === "details") {
+        updated = withJourneyDetails(saved, value);
+        updated = withMeetingInterval(updated, value.interval);
+        for (const id of ["outbound", "train", "inbound"]) {
+          if (!value.selfManaged[id])
+            updated = withManualPrice(updated, id, value.prices[id]);
+        }
+      } else if (action === "stations") {
         if (
           saved.tasks.some(
             (task) =>
@@ -252,6 +266,10 @@ export function mountApp(
         );
         if (proposal.kind !== "journey") throw new Error(proposal.message);
         updated = { ...saved, ...proposal, id: saved.id, selected: true };
+        if (saved.manualTrainTimes) {
+          updated.legs[1].plannedDeparture = saved.legs[1].plannedDeparture;
+          updated.legs[1].plannedArrival = saved.legs[1].plannedArrival;
+        }
         for (const id of ["outbound", "inbound"])
           if (saved.tasks.find((task) => task.id === id)?.selfManaged)
             updated = withSelfTransport(updated, id, true);
@@ -365,6 +383,11 @@ export function mountApp(
         result.hidden = false;
         result.textContent = plan.message;
       } else {
+        if (plan.legs[1].illustrative) {
+          plan.legs[1].plannedDeparture = null;
+          plan.legs[1].plannedArrival = null;
+          plan.manualTrainTimes = true;
+        }
         showCoordination();
         showPlan(await importFlow.stagePlan(plan));
       }

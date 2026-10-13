@@ -123,6 +123,7 @@ test("checkboxes are independent, persist through app reload, hide booking contr
   const first = setup();
   await until(() => first.root.querySelector("[data-open-plan]"));
   first.root.querySelector("[data-open-plan]").click();
+  first.root.querySelector("[data-edit-details]").click();
   assert.equal(first.root.querySelectorAll("[data-self-transport]").length, 2);
   assert.ok(
     [...first.root.querySelectorAll("[data-self-transport]")].every(
@@ -135,16 +136,21 @@ test("checkboxes are independent, persist through app reload, hide booking contr
     input.dispatchEvent(
       new first.dom.window.Event("change", { bubbles: true }),
     );
-    await until(() =>
-      first.root.querySelector(`[data-stage="${id}"] .compact-status`),
-    );
   }
+  first.root.querySelector("[data-save-details]").click();
+  await until(
+    () => first.root.querySelectorAll("[data-self-transport]").length === 0,
+  );
   assert.equal(first.root.querySelector("[data-booking-time]"), null);
   assert.ok(first.root.querySelector("[data-confirm-train]"));
-  assert.ok(first.root.querySelector('[data-price-action="outbound"]'));
+  assert.match(
+    first.root.querySelector("#result").textContent,
+    /Du sørger selv/,
+  );
   const second = setup();
   await until(() => second.root.querySelector("[data-open-plan]"));
   second.root.querySelector("[data-open-plan]").click();
+  second.root.querySelector("[data-edit-details]").click();
   assert.ok(
     [...second.root.querySelectorAll("[data-self-transport]")].every(
       (input) => input.checked,
@@ -153,7 +159,11 @@ test("checkboxes are independent, persist through app reload, hide booking contr
   const input = second.root.querySelector('[data-self-transport="inbound"]');
   input.checked = false;
   input.dispatchEvent(new second.dom.window.Event("change", { bubbles: true }));
-  await until(() => second.root.querySelector("[data-booking-time]"));
+  second.root.querySelector("[data-save-details]").click();
+  await until(
+    () => second.root.querySelectorAll("[data-self-transport]").length === 0,
+  );
+  second.root.querySelector("[data-edit-details]").click();
   assert.equal(
     second.root.querySelector('[data-self-transport="outbound"]').checked,
     true,

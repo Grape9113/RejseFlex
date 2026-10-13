@@ -1,5 +1,5 @@
 // Public journey seam: a wish and replaceable sources yield one provisional demo plan.
-import { copenhagenInstant } from './journey-details.js';
+import { copenhagenInstant, localDateTime } from './journey-details.js';
 import { resolveHandicapTrip } from './handicap-booking.js';
 import { classifyTripGeography } from './handicap-geography.js';
 import { demoRules, demoTaskGuidance, demoConflictGuidance, evaluateRules } from './rules.js';
@@ -13,7 +13,7 @@ export function createDemoTrainSource({ stationSource } = {}) {
       const trainArrival = new Date(anchor + (isDeparture ? 180 : -90) * 60_000).toISOString();
       const [fromStation, toStation] = stationSource ? await Promise.all([stationSource.nearby(wish.from.coordinates), stationSource.nearby(wish.to.coordinates)]) : [null, null];
       return [{
-        id: 'illustrative-train',
+        id: 'illustrative-train', illustrative: true,
         fromStation: wish.stations?.from ?? fromStation ?? { id: 'demo-start', name: 'Demostation ved start' },
         toStation: wish.stations?.to ?? toStation ?? { id: 'demo-end', name: 'Demostation ved destination' },
         plannedDeparture: trainDeparture,
@@ -83,6 +83,7 @@ function bookingAction(plan) {
 
 function refreshTaskReadiness(plan) {
   for (const task of plan.tasks) {
+    if (task.id === 'train' && (!plan.legs[1].plannedDeparture || !plan.legs[1].plannedArrival)) { task.status = 'ikke klar'; continue; }
     if (task.confirmed || ['bestilt', 'færdig'].includes(task.status) || task.selfManaged || task.id === 'inbound') continue;
     const ready = dependenciesReady(plan, task);
     if (task.id === 'train' && task.status === 'kræver genberegning' && activeConflicts(plan).length) continue;
@@ -113,7 +114,7 @@ export async function recordBookingTime(plan, taskId, time, { trainSource = crea
 }
 
 async function replanOpenTrain(updated, pickupTime, trainSource) {
-  const connections = await trainSource.findConnections(updated.wish, { beforeArrival: pickupTime });
+  const connections = updated.manualTrainTimes ? [updated.legs[1]] : await trainSource.findConnections(updated.wish, { beforeArrival: pickupTime });
   const candidate = [...connections].filter((connection) => Date.parse(connection.plannedArrival) <= Date.parse(pickupTime))
     .sort((a, b) => Date.parse(b.plannedArrival) - Date.parse(a.plannedArrival))[0];
   updated.uncertainties = updated.uncertainties.filter((item) => item.code !== 'unknown-transfer-buffer');
@@ -257,4 +258,87 @@ export async function proposeJourney(wish, { trainSource = createDemoTrainSource
   };
   plan.nextAction = bookingAction(plan);
   return plan;
+}
+
+// Explicit information entry is independent of external booking confirmation.
+export function withJourneyDetails(plan, values) {
+  let updated = structuredClone(plan);
+  for (const id of ["outbound", "inbound"]) {
+    updated = withSelfTransport(updated, id, values.selfManaged[id]);
+    if (!values.selfManaged[id]) {
+      const time = values.times[id]
+        ? copenhagenInstant(values.times[id])
+        : null;
+      const task = updated.tasks.find((item) => item.id === id);
+      if (task.confirmed && !time)
+        throw new Error(
+          "En bekræftet afhentning kan ikke fjernes. Kontrollér aftalen hos trafikselskabet.",
+        );
+      task.actualBookingTime = time;
+      if (time && !task.confirmed && task.id === "inbound")
+        task.status = "afventer brugerinput";
+      updated.legs.find((item) => item.id === id).actualBookingTime = time;
+    }
+  }
+  const train = updated.legs[1];
+  for (const [key, field] of [
+    ["departure", "plannedDeparture"],
+    ["arrival", "plannedArrival"],
+  ]) {
+    const previous = plan.legs[1][field];
+    const value = values.times[key]
+      ? copenhagenInstant(values.times[key])
+      : null;
+    if (localDateTime(previous) !== values.times[key]) {
+      train[field] = value;
+      updated.manualTrainTimes = true;
+    }
+  }
+  if (
+    train.plannedDeparture &&
+    train.plannedArrival &&
+    Date.parse(train.plannedArrival) < Date.parse(train.plannedDeparture)
+  )
+    throw new Error("Togets ankomst skal være efter afgangen.");
+  const assistance = updated.tasks.find((item) => item.id === "assistance");
+  updated.conflicts = (updated.conflicts ?? []).filter(
+    (item) => item.code !== "assistance-train-changed",
+  );
+  if (!assistance.confirmed) assistance.trainIdentity = trainIdentity(train);
+  else if (!sameTrain(assistance.trainIdentity, trainIdentity(train))) {
+    updated.conflicts.push({
+      code: "assistance-train-changed",
+      taskIds: ["train", "assistance"],
+      explanation:
+        "Togtiderne er ændret. Kontrollér den særskilt bekræftede Handicapservice-aftale hos DSB; den ændres ikke automatisk.",
+    });
+  }
+  if (!train.plannedDeparture || !train.plannedArrival) {
+    const trainTask = updated.tasks.find((item) => item.id === "train");
+    trainTask.status = "ikke klar";
+  }
+  if (updated.manualTrainTimes) {
+    updated.conflicts = (updated.conflicts ?? []).filter(
+      (item) => item.code !== "no-train-before-pickup",
+    );
+    const inbound = updated.tasks.find((item) => item.id === "inbound");
+    if (
+      !inbound.selfManaged &&
+      inbound.actualBookingTime &&
+      train.plannedArrival &&
+      Date.parse(train.plannedArrival) > Date.parse(inbound.actualBookingTime)
+    )
+      updated.conflicts.push({
+        code: "no-train-before-pickup",
+        taskIds: ["train", "inbound"],
+        explanation:
+          "Toget ankommer efter den oplyste afhentning. Kontrollér tiderne og aftalen med trafikselskabet.",
+      });
+  }
+  updated.feasibility = activeConflicts(updated).length
+    ? "konflikt"
+    : "foreløbig";
+  refreshTaskReadiness(updated);
+  updated.nextAction = bookingAction(updated);
+  return updated;
 }

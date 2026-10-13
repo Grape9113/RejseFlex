@@ -40,9 +40,10 @@ export function withMeetingInterval(plan, minutes) {
 }
 export function meetingTime(plan) {
   const assistance = plan.tasks.find((task) => task.id === "assistance");
-  const departure = assistance?.confirmed
-    ? assistance.trainIdentity?.plannedDeparture
-    : plan.legs[1].plannedDeparture;
+  const departure =
+    assistance?.confirmed && !plan.manualTrainTimes
+      ? assistance.trainIdentity?.plannedDeparture
+      : plan.legs[1].plannedDeparture;
   const timestamp = Date.parse(departure);
   return Number.isFinite(timestamp)
     ? new Date(

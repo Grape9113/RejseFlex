@@ -87,7 +87,12 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
   };
   const header = element(document, "div", "journey-header");
   header.append(
-    element(document, "span", "eyebrow", "REJSEOVERSIGT"),
+    element(
+      document,
+      "span",
+      "eyebrow",
+      plan.selected ? "3 · REJSEOVERBLIK" : "2 · REJSEOPLYSNINGER",
+    ),
     element(
       document,
       "h2",
@@ -113,13 +118,178 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
       document,
       "p",
       "demo-notice",
-      "Demo · Togtiderne er illustrative. Kontrollér tider og aftaler før en virkelig rejse.",
+      plan.manualTrainTimes
+        ? "Demo · Tiderne er dine egne oplysninger. RejseFlex kontrollerer ikke eksterne aftaler."
+        : "Demo · Togtiderne er illustrative. Kontrollér tider og aftaler før en virkelig rejse.",
     ),
   );
   if (!plan.selected) {
     const save = button("Gem rejse", () => onSelect(plan), "select-plan");
     save.dataset.selectPlan = "";
     result.append(save);
+  }
+  const editorHost = element(document, "div", "journey-editor-host");
+  editorHost.hidden = true;
+  const edit = button(
+    plan.selected ? "Rediger rejseoplysninger" : "Indtast rejseoplysninger",
+    () => openDetails(),
+    "secondary-button",
+  );
+  edit.dataset.editDetails = "";
+  header.append(edit);
+  result.append(editorHost);
+  function openDetails(focusId) {
+    editorHost.replaceChildren();
+    editorHost.hidden = false;
+    stages.hidden = true;
+    documents.hidden = true;
+    edit.hidden = true;
+    const selectPlan = result.querySelector("[data-select-plan]");
+    if (selectPlan) selectPlan.hidden = true;
+    const form = element(document, "form", "journey-details-editor");
+    form.append(
+      element(document, "h3", "", "Rejseoplysninger"),
+      element(
+        document,
+        "p",
+        "muted",
+        "Udfyld det, du ved. Resten kan tilføjes senere. Bestillinger bekræftes særskilt i overblikket.",
+      ),
+    );
+    const inputs = {},
+      prices = {},
+      self = {};
+    const field = (parent, labelText, type, value) => {
+      const label = element(document, "label", "field", labelText);
+      const input = element(document, "input");
+      input.type = type;
+      input.value = value ?? "";
+      label.append(input);
+      parent.append(label);
+      return input;
+    };
+    for (const [id, title] of [
+      ["outbound", "Til stationen"],
+      ["train", "Tog og Handicapservice"],
+      ["inbound", "Fra stationen"],
+    ]) {
+      const group = element(document, "fieldset", "detail-group");
+      group.append(element(document, "legend", "", title));
+      let transportFields;
+      if (id !== "train") {
+        self[id] = field(
+          group,
+          "Jeg sørger selv for transporten",
+          "checkbox",
+          "",
+        );
+        self[id].checked = task(id).selfManaged === true;
+        self[id].dataset.selfTransport = id;
+        transportFields = element(document, "div");
+        group.append(transportFields);
+        inputs[id] = field(
+          transportFields,
+          id === "outbound"
+            ? "Afhentning ved startadressen"
+            : "Afhentning ved ankomststationen",
+          "datetime-local",
+          localDateTime(task(id).actualBookingTime),
+        );
+        inputs[id].dataset.detailTime = id;
+        const toggle = () => {
+          transportFields.hidden = self[id].checked;
+        };
+        self[id].addEventListener("change", toggle);
+        toggle();
+        if (task(id).confirmed)
+          group.append(
+            element(
+              document,
+              "p",
+              "muted",
+              "Ret kun en bekræftet afhentning, hvis ændringen er aftalt med trafikselskabet.",
+            ),
+          );
+      } else {
+        for (const [key, title, value] of [
+          ["departure", "Togets afgang", plan.legs[1].plannedDeparture],
+          ["arrival", "Togets ankomst", plan.legs[1].plannedArrival],
+        ]) {
+          inputs[key] = field(
+            group,
+            title,
+            "datetime-local",
+            localDateTime(value),
+          );
+          inputs[key].dataset.detailTime = key;
+        }
+      }
+      prices[id] = field(
+        transportFields ?? group,
+        "Eventuel pris (kr.)",
+        "text",
+        Number.isSafeInteger(plan.manualPrices?.[id])
+          ? String(plan.manualPrices[id] / 100).replace(".", ",")
+          : "",
+      );
+      prices[id].inputMode = "decimal";
+      prices[id].dataset.manualPrice = id;
+      form.append(group);
+    }
+    const intervalLabel = element(
+      document,
+      "label",
+      "field",
+      "Fremmøde før togafgang",
+    );
+    const interval = element(document, "select");
+    for (const minutes of [15, 30]) {
+      const option = element(document, "option", "", `${minutes} minutter`);
+      option.value = String(minutes);
+      interval.append(option);
+    }
+    interval.value = String(plan.assistanceInterval ?? 15);
+    intervalLabel.append(interval);
+    form.append(intervalLabel);
+    const save = element(
+      document,
+      "button",
+      "select-plan",
+      "Gem oplysninger og vis overblik",
+    );
+    save.type = "submit";
+    save.dataset.saveDetails = "";
+    const cancel = button("Annuller", () => {
+      editorHost.hidden = true;
+      editorHost.replaceChildren();
+      stages.hidden = false;
+      documents.hidden = false;
+      edit.hidden = false;
+      if (selectPlan) selectPlan.hidden = false;
+      edit.focus();
+    });
+    cancel.dataset.cancelDetails = "";
+    form.append(save, cancel);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void execute(form, "details", {
+        times: Object.fromEntries(
+          Object.entries(inputs).map(([id, input]) => [id, input.value]),
+        ),
+        prices: Object.fromEntries(
+          Object.entries(prices).map(([id, input]) => [id, input.value]),
+        ),
+        selfManaged: Object.fromEntries(
+          Object.entries(self).map(([id, input]) => [id, input.checked]),
+        ),
+        interval: Number(interval.value),
+      });
+    });
+    editorHost.append(form);
+    const focusInput = focusId
+      ? inputs[focusId]
+      : Object.values(inputs).find((input) => !input.closest("[hidden]"));
+    focusInput?.focus();
   }
   const stages = element(document, "div", "journey-timeline");
   result.append(stages);
@@ -147,77 +317,14 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
   };
   const addPrice = (stage, id) => {
     const cents = plan.manualPrices?.[id];
-    const controls = element(document, "div", "price-control");
-    const add = button(
-      Number.isSafeInteger(cents)
-        ? `${money(cents)} · Redigér pris`
-        : "Tilføj pris",
-      () => {
-        editor.hidden = false;
-        add.hidden = true;
-        input.focus();
-      },
-      "text-button",
-    );
-    add.dataset.priceAction = id;
-    const editor = element(document, "form", "price-editor");
-    editor.hidden = true;
-    const label = element(document, "label", "field", "Faktisk pris (DKK)");
-    const input = element(document, "input");
-    input.type = "text";
-    input.inputMode = "decimal";
-    input.value = Number.isSafeInteger(cents)
-      ? String(cents / 100).replace(".", ",")
-      : "";
-    input.dataset.manualPrice = id;
-    label.append(input);
-    const save = element(document, "button", "secondary-button", "Gem pris");
-    save.type = "submit";
-    editor.addEventListener("submit", (event) => {
-      event.preventDefault();
-      void execute(controls, "price", input.value, id);
-    });
-    const cancel = button(
-      "Annullér",
-      () => {
-        editor.hidden = true;
-        add.hidden = false;
-      },
-      "text-button",
-    );
-    editor.append(label, save, cancel);
     if (Number.isSafeInteger(cents))
-      editor.append(
-        button(
-          "Fjern pris",
-          () => execute(controls, "price", null, id),
-          "text-button",
-        ),
+      stage.append(
+        element(document, "p", "registered-price", `Pris · ${money(cents)}`),
       );
-    controls.append(add, editor);
-    stage.append(controls);
   };
   const booking = (stage, id) => {
     const bookingTask = task(id);
     const controls = element(document, "div", "stage-booking");
-    const selfLabel = element(document, "label", "self-transport-control");
-    const self = element(document, "input");
-    self.type = "checkbox";
-    self.checked = bookingTask.selfManaged === true;
-    self.dataset.selfTransport = id;
-    self.addEventListener(
-      "change",
-      () => void execute(controls, "self-transport", self.checked, id),
-    );
-    selfLabel.append(
-      self,
-      document.createTextNode(
-        id === "outbound"
-          ? "Jeg transporterer mig selv til stationen"
-          : "Jeg transporterer mig selv fra stationen",
-      ),
-    );
-    controls.append(selfLabel);
     if (bookingTask.selfManaged) {
       controls.append(
         element(
@@ -259,76 +366,22 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
           "Ekstern bestilling bekræftet",
         ),
       );
+    if (!bookingTask.actualBookingTime)
+      controls.append(
+        button("Oplys afhentningstid", () => openDetails(id), "text-button"),
+      );
     if (
       plan.selected &&
-      (bookingTask.confirmed ||
-        ["klar til booking", "afventer brugerinput"].includes(
-          bookingTask.status,
-        ))
+      bookingTask.actualBookingTime &&
+      !bookingTask.confirmed &&
+      ["klar til booking", "afventer brugerinput"].includes(bookingTask.status)
     ) {
-      const editor = element(document, "form", "pickup-editor");
-      const label = element(
-        document,
-        "label",
-        "field",
-        "Oplyst afhentningstid",
+      const confirm = button("Bekræft ekstern bestilling", () =>
+        execute(controls, "confirm", undefined, id),
       );
-      const input = element(document, "input");
-      input.type = "datetime-local";
-      input.value = localDateTime(bookingTask.actualBookingTime);
-      input.required = true;
-      input.dataset[`bookingTime${suffix}`] = "";
-      label.append(input);
-      const save = element(
-        document,
-        "button",
-        "secondary-button",
-        bookingTask.actualBookingTime
-          ? "Gem ændret tid"
-          : "Registrér oplyst tid",
-      );
-      save.type = "submit";
-      save.dataset[`recordTime${suffix}`] = "";
-      editor.append(label, save);
-      editor.addEventListener("submit", (event) => {
-        event.preventDefault();
-        void execute(
-          controls,
-          bookingTask.confirmed ? "edit-time" : "time",
-          input.value,
-          id,
-        );
-      });
-      if (bookingTask.confirmed) {
-        const details = element(document, "details", "inline-details");
-        details.append(
-          element(document, "summary", "", "Redigér aftalt afhentningstid"),
-          element(
-            document,
-            "p",
-            "muted",
-            "Ændr kun tiden, hvis du har aftalt ændringen med trafikselskabet.",
-          ),
-          editor,
-        );
-        controls.append(details);
-      } else controls.append(editor);
-      if (bookingTask.actualBookingTime && !bookingTask.confirmed) {
-        const confirm = button("Bekræft ekstern bestilling", () =>
-          execute(controls, "confirm", undefined, id),
-        );
-        confirm.dataset[`confirmBooking${suffix}`] = "";
-        controls.append(confirm);
-      }
-    } else if (plan.selected && !bookingTask.confirmed)
-      controls.append(
-        element(
-          document,
-          "p",
-          "muted",
-          "Afhentningstid kan registreres, når Handicapservice er bekræftet.",
-        ),
-      );
+      confirm.dataset[`confirmBooking${suffix}`] = "";
+      controls.append(confirm);
+    }
     if (plan.nextAction.taskId === id) {
       const action = element(document, "div", "context-action");
       action.dataset.nextAction = "";
@@ -358,7 +411,12 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
         link.rel = "noopener noreferrer";
         action.append(link);
       }
-      controls.append(action);
+      const bookingHelp = element(document, "details", "inline-details");
+      bookingHelp.append(
+        element(document, "summary", "", "Næste bookingtrin"),
+        action,
+      );
+      controls.append(bookingHelp);
     }
     stage.append(controls);
     addPrice(stage, id);
@@ -382,6 +440,10 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
     times.append(item);
   }
   train.append(times);
+  if (!leg.plannedDeparture || !leg.plannedArrival)
+    train.append(
+      button("Tilføj togtider", () => openDetails("departure"), "text-button"),
+    );
   if (
     !plan.tasks.some(
       (item) =>
@@ -415,6 +477,11 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
       button("Gem stationsvalg", () =>
         execute(stationEditor, "stations", { ...selection }),
       ),
+      button(
+        "Annuller",
+        () => renderJourney(root, plan, onSelect, onUpdate),
+        "text-button",
+      ),
     );
     train.append(stationEditor);
   }
@@ -439,27 +506,14 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
     `Mødetid · ${dateTime(meetingTime(plan))}`,
   );
   assistance.append(meeting);
-  const fieldset = element(document, "fieldset", "meeting-control");
-  fieldset.append(element(document, "legend", "", "Mød før togafgang"));
-  const segments = element(document, "div", "segmented-control");
-  for (const minutes of [15, 30]) {
-    const choice = button(
-      `${minutes} minutter`,
-      () => {
-        meeting.textContent = `Mødetid · ${dateTime(meetingTime({ ...plan, assistanceInterval: minutes }))}`;
-        void execute(assistance, "interval", minutes);
-      },
-      "segment",
-    );
-    choice.setAttribute(
-      "aria-pressed",
-      String((plan.assistanceInterval ?? 15) === minutes),
-    );
-    choice.dataset.meetingInterval = String(minutes);
-    segments.append(choice);
-  }
-  fieldset.append(segments);
-  assistance.append(fieldset);
+  assistance.append(
+    element(
+      document,
+      "p",
+      "muted",
+      `${plan.assistanceInterval ?? 15} minutter før togafgang`,
+    ),
+  );
   assistance.append(
     element(
       document,
@@ -531,12 +585,20 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
   dsb.target = "_blank";
   dsb.rel = "noopener noreferrer";
   help.append(dsb);
+  for (const node of [...assistance.children]) {
+    if (
+      node.matches(".muted") &&
+      node.textContent !==
+        `${plan.assistanceInterval ?? 15} minutter før togafgang`
+    )
+      help.append(node);
+  }
   assistance.append(help);
-  train.append(assistance);
+  train.insertBefore(assistance, times);
   const documents = element(document, "div", "stage-documents");
   documents.append(element(document, "h4", "", "Dine rejsedokumenter"));
   for (const [kind, title, accept] of [
-    ["assistance", "Assistanceplan", ".docx"],
+    ["assistance", "Rejseplan / assistanceplan", ".docx"],
     ["ticket", "Kørestolspladsbillet", ".pdf"],
   ]) {
     const row = element(document, "div", "document-row");
@@ -575,6 +637,10 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
       upload,
     );
     if (reference) {
+      const manage = element(document, "details", "inline-details");
+      manage.append(element(document, "summary", "", "Administrer bilag"));
+      manage.append(...actions.childNodes);
+      actions.append(manage);
       actions.prepend(
         button(
           "Vis",
@@ -588,20 +654,25 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
           () => execute(row, "download-document", reference.id),
           "text-button",
         ),
-        button(
-          "Fjern",
-          () => execute(row, "remove-document", null, kind),
-          "text-button",
-        ),
       );
     }
+    if (reference)
+      actions
+        .querySelector("details")
+        .append(
+          button(
+            "Fjern",
+            () => execute(row, "remove-document", null, kind),
+            "text-button",
+          ),
+        );
     row.append(actions);
     documents.append(row);
   }
   documents.append(
     element(document, "p", "muted", "Dokumenter gemmes kun på denne enhed."),
   );
-  train.append(documents);
+  result.append(documents);
   addPrice(train, "train");
   const last = createStage(3, "inbound", "Handicapkørsel til destinationen");
   route(last, plan.legs[2].from, plan.legs[2].to);
@@ -668,4 +739,5 @@ export function renderJourney(root, plan, onSelect, onUpdate) {
     ),
   );
   result.append(details);
+  if (!plan.selected) openDetails();
 }

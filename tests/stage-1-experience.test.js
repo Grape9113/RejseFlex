@@ -21,7 +21,7 @@ function openApp() {
   return { dom, root };
 }
 
-test('mobilbruger søger, vælger, registrerer tid, genberegner og genåbner den foreløbige demorejse', async () => {
+test('mobilbruger søger, vælger, registrerer tider og genåbner den foreløbige demorejse', async () => {
   saved.clear();
   const { dom, root } = openApp();
   const form = root.querySelector('form');
@@ -37,9 +37,12 @@ test('mobilbruger søger, vælger, registrerer tid, genberegner og genåbner den
   assert.equal(root.querySelectorAll('[data-journey-section]').length, 3);
   assert.equal(saved.size, 0);
   root.querySelector('[data-select-plan]').click(); await tick();
-  root.querySelector('[data-booking-time]').value = '2026-10-02T13:00';
-  root.querySelector('[data-record-time]').click(); await tick();
-  assert.equal([...saved.values()][0].legs[1].id, 'earlier');
+  root.querySelector('[data-edit-details]').click();
+  root.querySelector('[data-detail-time="inbound"]').value = '2026-10-02T13:00';
+  root.querySelector('[data-detail-time="departure"]').value = '2026-10-02T12:00';
+  root.querySelector('[data-detail-time="arrival"]').value = '2026-10-02T12:30';
+  root.querySelector('[data-save-details]').click(); await tick();
+  assert.equal([...saved.values()][0].legs[1].id, 'later');
   assert.match(root.querySelector('[data-next-action]').textContent, /Bekræft den eksterne bestilling/);
   root.querySelector('[data-confirm-booking]').click(); await tick();
   root.querySelector('[data-confirm-train]').click(); await tick();
@@ -67,13 +70,19 @@ test('alle fire demotrin kan registreres i rækkefølge', async () => {
   root.querySelector('[data-select-plan]').click(); await tick();
   assert.equal(root.querySelector('[data-booking-time-outbound]'), null);
   assert.equal(root.querySelector('[data-confirm-assistance]'), null);
-  root.querySelector('[data-booking-time]').value = '2026-10-02T13:00';
-  root.querySelector('[data-record-time]').click(); await tick();
+  root.querySelector('[data-edit-details]').click();
+  root.querySelector('[data-detail-time="inbound"]').value = '2026-10-02T13:00';
+  root.querySelector('[data-detail-time="departure"]').value = '2026-10-02T12:00';
+  root.querySelector('[data-detail-time="arrival"]').value = '2026-10-02T12:30';
+  root.querySelector('[data-save-details]').click(); await tick();
   root.querySelector('[data-confirm-booking]').click(); await tick();
   root.querySelector('[data-confirm-train]').click(); await tick();
   root.querySelector('[data-confirm-assistance]').click(); await tick();
-  root.querySelector('[data-booking-time-outbound]').value = '2026-10-02T09:00';
-  root.querySelector('[data-record-time-outbound]').click(); await tick();
+  root.querySelector('[data-edit-details]').click();
+  root.querySelector('[data-detail-time="outbound"]').value = '2026-10-02T09:00';
+  root.querySelector('[data-detail-time="departure"]').value = '2026-10-02T12:00';
+  root.querySelector('[data-detail-time="arrival"]').value = '2026-10-02T12:30';
+  root.querySelector('[data-save-details]').click(); await tick();
   root.querySelector('[data-confirm-booking-outbound]').click(); await tick();
   const plan = [...saved.values()][0];
   assert.deepEqual(plan.tasks.map((task) => task.status), ['bestilt', 'færdig', 'bestilt', 'bestilt']);

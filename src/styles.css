@@ -1324,3 +1324,84 @@ h4 {
     font-size: 16px;
   }
 }
+
+.journey-details-editor {
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-top: var(--space-4);
+}
+.detail-group {
+  border: 0;
+  border-top: 1px solid var(--line);
+  padding: var(--space-4) 0;
+  margin: 0;
+  min-width: 0;
+}
+.detail-group legend {
+  font-weight: 650;
+  padding: 0 8px 0 0;
+}
+.detail-group > div {
+  display: grid;
+  gap: var(--space-3);
+}
+.journey-details-editor .field {
+  margin-bottom: var(--space-3);
+}
+.journey-details-editor input[type="checkbox"] {
+  width: 24px;
+  min-height: 24px;
+}
+.journey-details-editor select {
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+.journey-details-editor button {
+  margin: 8px 8px 0 0;
+}
+.journey-editor-host[hidden],
+.journey-timeline[hidden],
+.detail-group div[hidden] {
+  display: none;
+}
+.actual-time,
+.meeting-time,
+.train-times strong {
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.travel-stage {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+.registered-price {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 8px 0;
+}
+@media (min-width: 700px) {
+  .detail-group > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 699px) {
+  .journey-details-editor {
+    padding: 16px;
+  }
+  .journey-details-editor input,
+  .journey-details-editor select {
+    font-size: 16px;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .train-times {
+    flex-wrap: wrap;
+    gap: 16px 28px;
+  }
+}

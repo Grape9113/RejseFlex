@@ -42,9 +42,12 @@ test('selected journey accepts time and separate confirmation, then persists upd
   form.elements.handicapProvider.value = 'FYNBUS';
   form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
   await tick(); root.querySelector('[data-select-plan]').click(); await tick();
-  assert.ok(root.querySelector('[data-booking-time]'));
-  root.querySelector('[data-booking-time]').value = '2026-10-02T12:00';
-  root.querySelector('[data-record-time]').click(); await tick();
+  root.querySelector('[data-edit-details]').click();
+  assert.ok(root.querySelector('[data-detail-time="inbound"]'));
+  root.querySelector('[data-detail-time="inbound"]').value = '2026-10-02T12:00';
+  root.querySelector('[data-detail-time="departure"]').value = '2026-10-02T11:00';
+  root.querySelector('[data-detail-time="arrival"]').value = '2026-10-02T11:30';
+  root.querySelector('[data-save-details]').click(); await tick();
   assert.match(root.querySelector('[data-next-action]').textContent, /bekræft/i);
   assert.equal([...saved.values()][0].tasks.find((task) => task.id === 'inbound').status, 'afventer brugerinput');
   root.querySelector('[data-confirm-booking]').click(); await tick();

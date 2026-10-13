@@ -22,3 +22,13 @@ Kontrolleret i den samarbejdende Chromium-browser ved 1280 px desktop og 390 px 
 - Rejseoversigten har præcis tre primære trin, ingen separate bookingpaneler og intet vandret overflow.
 
 Word-layout kan variere i browseren. Beskadigede eller adgangskodebeskyttede filer får en fejl i læseren; originalfilen forbliver lokal og kan hentes. Stationslisten er bevidst midlertidig og kan erstattes i `src/stations.js`. Aftalte stationer ændres ikke gennem redigeringskontrollen efter registrering af en booking.
+
+
+## Tre faser — 13. oktober 2026, Issue #19
+
+- `npm test`: 77 tests består i både Europe/Copenhagen og UTC. Nye regressionstests i `tests/journey-overview.test.js` dækker låst standardvisning, alle fire tidsfelter, annullering, delvise ældre rejser, samlet UI-gemning, IndexedDB-genåbning, bevarede dokumenthenvisninger/priser, genberegnet fremmøde og bevaret bekræftet Handicapservice-aftale. Ugyldige tider og konflikter mellem togankomst og afhentning dækkes; manuelle togtider bevares ved ændring af bekræftet afhentning.
+- Eksisterende UI-tests bruger nu den eksplicitte redigering og gemning. Domænetests for bookingrækkefølge, stationsvalg, selvtransportkombinationer, dokumentbytes og lagring består fortsat. De nye UI-tests venter på den konkrete liste-/gemmetilstand frem for en fast forsinkelse ved IndexedDB-genåbning.
+- Browserkontrol ved 1280 × 800 og 390 × 844 med en syntetisk lokal rejse: tomme tider vises som manglende; alle fire tider og pris kan gemmes; 30-minutters fremmøde beregnes korrekt; gemning og genåbning efter genindlæsning viser låst overblik. Mobilredigering og mobiloverblik har ingen vandret overflow. Annullering af ændret togafgang bevarer det oprindelige fremmøde. Den nye faseskift-test kontrollerer, at rutevalg åbner indtastning med tomme demotider, og at en delvis rejse gemmes direkte til overblik. Ingen testrejse blev sendt til en ekstern tjeneste.
+- `npm run verify:deploy` kontrollerer produktionsbuild og offentlige assets. Projektet har ingen lint-script eller lint-konfiguration; JavaScript kontrolleres med `node --check` og ændringer med `git diff --check`.
+
+Dokumentlæser/import og stationsselektion er genbrugt uden ændringer. Eksterne aftaler og faktiske forbindelser kontrolleres fortsat af brugeren; Rejseplanens API er ikke integreret.

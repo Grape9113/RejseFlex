@@ -32,7 +32,7 @@ Rejseoversigten viser tre rejseben i én lodret tidslinje. Handicapservice er in
 
 Manuelle udgifter gemmes som heltal i øre i `manualPrices`, uafhængigt af `priceEstimate`. Manglende værdier udelades. Vis kun "Samlet pris", når alle tre priser er registreret; ellers "Registrerede udgifter". Takstmodulerne bevares, men appens planlægning bruger `calculatePrices: false`.
 
-Mødeinterval er 15 minutter som standard, eller 30 efter brugerens valg. Mødetiden beregnes fra togafgangen; ved bekræftet Handicapservice bruges den bekræftede togidentitet. Dette ændrer ingen bookingbuffer. Eksplicit redigering af en bekræftet afhentning kræver brugerhandling og bevarer andre aftaler; genberegning må aldrig ændre deres tider.
+Mødeinterval er 15 minutter som standard, eller 30 efter brugerens valg. Mødetiden beregnes fra togafgangen; ved ældre rejser med bekræftet Handicapservice bruges den bekræftede togidentitet. Når brugeren eksplicit oplyser nye togtider, beregnes fremmødet fra disse tider, mens den eksterne aftales togidentitet bevares og eventuelle ændringer markeres som konflikt. Dette ændrer ingen bookingbuffer. Eksplicit redigering af en bekræftet afhentning kræver brugerhandling og bevarer andre aftaler; genberegning må aldrig ændre deres tider.
 
 Stationskomponenten (`station-select.js`) bruger stationers ID, navn og koordinater. Eksempeldata findes separat i `stations.js`. Automatisk bestemte og tidligere gemte stationer uden for datasættet bevares som valgbare værdier. Adresse-autocomplete er uafhængig. Stationsredigering efter registrering af aftaler er spærret, så aftaler ikke flyttes til en anden station ved et uheld.
 
@@ -49,3 +49,14 @@ Favoritter er brugerens eksplicitte valg og gemmes som komplette adresseobjekter
 Kortmarkører er Leaflet-divIcons, så ingen PNG-stier er nødvendige. A er afgang med hvid fyldning og blå kant; B er destination med blå fyldning. Retningen sendes separat til kortet, så en destination uden afgang stadig får B. Popuptekst indsættes som tekst, ikke HTML.
 
 Selvtransport vælges uafhængigt på første og sidste handicapkørselsben og er fravalgt som standard. Tilvalget opfylder det pågældende bookingkrav, uden at ændre registrerede eksterne aftaler, tider eller manuelle priser. Fravalg genindfører bookingkravet. Togvalg og Handicapservice beholder deres egne kontroller.
+
+
+## Tre faser og bevidst redigering
+
+Rutevalget bevarer adressefelter, kort og stationsvælger. Den manuelle stationsvælger er fortsat udfoldet fra start. Efter rutevalget åbner en samlet indtastning af rejseoplysninger. Gemte rejser åbner altid i overblik.
+
+Overblikket følger første transportben, Handicapservice-fremmøde, togafgang og togankomst samt sidste transportben. Tider og registrerede priser vises som tekst. Dokumenterne følger efter rejsekæden, så bilag ikke afbryder kronologien. Bookingvejledning og frister kan udfoldes; bekræftelse af eksterne aftaler er fortsat særskilt.
+
+En samlet »Rediger rejseoplysninger«-handling åbner lokale formularværdier for alle fire tider, priser, selvtransport og 15/30 minutters fremmøde. Gemning validerer alle oplysninger før én lokal lagring. Annullering fjerner formularen uden at ændre rejseplanen. Manglende afhentning eller togtider har en handling til at tilføje oplysninger. Ingen tider eller priser kræves for selvtransport. Eksisterende registrerede aftaler og priser bevares ved tilvalg af selvtransport.
+
+Der er ingen ny databaseversion. Togtider bruger de eksisterende `plannedDeparture`/`plannedArrival`; afhentninger bruger `actualBookingTime` i rejseben og opgaver. `manualTrainTimes` markerer, at tiderne er brugerens oplysninger, så demogenberegning ikke erstatter dem. Nye rejser fra demokilden starter med tomme togtider. Gamle rejser uden markøren åbnes som hidtil med tydeligt demoforbehold. Bookingkontroller kræver stadig de eksisterende afhængigheder og særskilt Handicapservice-bekræftelse.

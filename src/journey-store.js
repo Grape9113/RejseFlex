@@ -90,6 +90,81 @@ export function createJourneyStore(indexedDB = globalThis.indexedDB) {
     list: () => operation("journeys", "readonly", (store) => store.getAll()),
     save: (plan) =>
       operation("journeys", "readwrite", (store) => store.put(plan)),
+    async completeImport(
+      plan,
+      document,
+      { expectedDocumentId = null, create = false } = {},
+    ) {
+      const db = await database();
+      try {
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction(["journeys", "documents"], "readwrite");
+          let updated;
+          tx.oncomplete = () => resolve(updated);
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error);
+          const fail = (error) => {
+            tx.abort();
+            reject(error);
+          };
+          const documents = tx.objectStore("documents"),
+            journeys = tx.objectStore("journeys");
+          const existingDocument = documents.get(document.id);
+          existingDocument.onsuccess = () => {
+            if (
+              existingDocument.result &&
+              existingDocument.result.journeyId !== plan.id
+            ) {
+              fail(
+                new Error("Bilaget er allerede importeret til en anden rejse."),
+              );
+              return;
+            }
+            const current = journeys.get(plan.id);
+            current.onsuccess = () => {
+              try {
+                const latest = current.result ?? (create ? plan : null);
+                if (!latest)
+                  throw new Error(
+                    "Rejsen findes ikke længere. Vælg en anden rejse.",
+                  );
+                const previous = (latest.documentReferences ?? []).find(
+                  (ref) => ref.kind === document.kind,
+                );
+                if (previous?.id === document.id) {
+                  updated = latest;
+                  return;
+                }
+                if ((previous?.id ?? null) !== expectedDocumentId)
+                  throw new Error(
+                    "Et bilag i dette felt skal erstattes. Vælg rejsen igen, og bekræft erstatningen.",
+                  );
+                updated = {
+                  ...latest,
+                  documentReferences: [
+                    ...(latest.documentReferences ?? []).filter(
+                      (ref) => ref.kind !== document.kind,
+                    ),
+                    {
+                      id: document.id,
+                      kind: document.kind,
+                      name: document.name,
+                    },
+                  ],
+                };
+                documents.put({ ...document, journeyId: latest.id });
+                journeys.put(updated);
+                if (previous) documents.delete(previous.id);
+              } catch (error) {
+                fail(error);
+              }
+            };
+          };
+        });
+      } finally {
+        db.close();
+      }
+    },
     async saveDocument(plan, document, previousId) {
       const db = await database();
       try {

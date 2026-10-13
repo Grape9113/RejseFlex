@@ -15,6 +15,7 @@ async function workerScenario({ online, url, mode = 'navigate' }) {
     fetch: async (request) => { fetches.push(request.url); if (!online) throw new Error('offline'); return { ok: true, text: 'new page', clone() { return this; } }; },
     URL,
   };
+  context.importScripts = () => {};
   vm.runInNewContext(await readFile(new URL('../public/sw.js', import.meta.url), 'utf8'), context);
   let response;
   handlers.fetch({ request: { url, method: 'GET', mode }, respondWith: (promise) => { response = promise; }, waitUntil: () => {} });

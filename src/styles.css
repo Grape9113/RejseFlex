@@ -1252,3 +1252,75 @@ h4 {
   flex-shrink: 0;
   margin: 2px 0 0;
 }
+.import-screen {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.import-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.import-screen h1 {
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  margin: 0 0 8px;
+}
+.import-screen .field {
+  margin: 20px 0 12px;
+}
+.import-screen input[type="file"] {
+  height: auto;
+  padding: 10px;
+  line-height: 1.5;
+}
+.import-file-info {
+  display: grid;
+  gap: 4px;
+  padding: 16px 0;
+  overflow-wrap: anywhere;
+}
+.import-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 8px 0 16px;
+}
+.import-journeys {
+  display: grid;
+  gap: 8px;
+}
+.import-journeys button {
+  text-align: left;
+}
+.import-journeys button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: #eff4ff;
+  color: var(--accent);
+}
+.pending-import {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .import-screen {
+    padding: 20px;
+  }
+  .import-actions {
+    display: grid;
+  }
+  .coordination-topbar {
+    flex-wrap: wrap;
+  }
+  .import-screen .field input {
+    font-size: 16px;
+  }
+}
